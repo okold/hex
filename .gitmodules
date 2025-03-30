@@ -1,0 +1,4 @@
+[submodule "eas"]
+	path = eas
+	url = https://github.com/gabrfarina/exp-a-spiel
+	branch = main

@@ -1,0 +1,5 @@
+- algorithm=nfsp
+- game=dark_hex
+- max_steps=1000
+- compute_exploitability=True
+- compute_exploitability_every=100

@@ -1,0 +1,12 @@
+.pixi
+pixi.lock
+.DS_STORE
+.vscode/
+**/__pychache__/
+**/*.pyc
+**/*.pkl
+**/*.pt
+**/*.pth
+**/*.npy
+local/
+results/
