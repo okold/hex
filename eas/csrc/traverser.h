@@ -28,15 +28,16 @@ struct Treeplex {
   std::vector<uint64_t> infoset_keys;
   std::vector<uint32_t> legal_actions;
   std::vector<uint32_t> parent_index;
+  uint32_t move_count;
 
   uint32_t num_infosets() const { return infoset_keys.size(); }
-  bool is_valid_vector(ConstRealBuf buf) const;
-  bool is_valid_strategy(ConstRealBuf buf) const;
-  void set_uniform(RealBuf buf) const;
-  void bh_to_sf(RealBuf buf) const;
-  void sf_to_bh(RealBuf buf) const;
-  Real br(RealBuf grad, RealBuf strat = std::span<Real>()) const;
-  void regret_to_bh(RealBuf buf) const;
+  bool is_valid_vector(ConstRealBuf buf, uint32_t move_count=9) const;
+  bool is_valid_strategy(ConstRealBuf buf, uint32_t move_count=9) const;
+  void set_uniform(RealBuf buf, uint32_t move_count=9) const;
+  void bh_to_sf(RealBuf buf, uint32_t move_count=9) const;
+  void sf_to_bh(RealBuf buf, uint32_t move_count=9) const;
+  Real br(RealBuf grad, RealBuf strat = std::span<Real>(), uint32_t move_count=9) const;
+  void regret_to_bh(RealBuf buf, uint32_t move_count=9) const;
 };
 
 struct EvExpl {

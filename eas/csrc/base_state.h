@@ -8,10 +8,14 @@
 #include <stdexcept>
 #include <string>
 
+#include <vector>
+
 const uint8_t TIE = 0xee;
 
-template <bool abrupt> struct BaseState {
-  uint8_t x[2][9]; // state: 2 players, 9 possible moves each
+template <bool abrupt, uint32_t board_s = 3> struct BaseState {
+  
+
+  uint8_t x[2][board_s*board_s]; // state: 2 players, 9 possible moves each
   // x[p][i] is
   //   0 if player p never played cell i
   //   otherwise x[p][i] >> 1 indicates the turn on which player p played on
@@ -20,8 +24,11 @@ template <bool abrupt> struct BaseState {
   uint8_t p;    // player (0 or 1)
   uint8_t t[2]; // turn
 
+  static constexpr uint32_t b_s = board_s;
+  uint32_t move_count = b_s*b_s;
+
   BaseState()
-      : x{{0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}}, p{0},
+      : x{}, p{0},
         t{0, 0} {}
 
   uint8_t player() const { return p; }
@@ -46,7 +53,7 @@ template <bool abrupt> struct BaseState {
 
   uint32_t available_actions() const {
     uint32_t actions = 0;
-    for (int i = 0; i < 9; ++i) {
+    for (int i = 0; i < move_count; ++i) {
       if (!x[p][i]) {
         actions |= (1 << i);
       }
@@ -66,10 +73,10 @@ template <bool abrupt> struct BaseState {
   uint64_t get_infoset() const {
     uint64_t info = 0;
     uint8_t t_ = t[p];
-    for (int i = 0; i < 9; ++i) {
+    for (int i = 0; i < move_count; ++i) {
       const uint8_t to = x[p][i];
       const uint8_t td = t_ - (x[p][i] >> 1);
-      assert(td <= 9);
+      assert(td <= move_count);
       info |= uint64_t(((i + 1) << 1) + (to & 1)) << (5 * td);
     }
     // if a cell hasn't been played, td = t_ and this is stored in the infoset
@@ -101,7 +108,7 @@ template <bool abrupt> struct BaseState {
 };
 
 // get total number of moves played so far
-inline uint8_t num_actions(uint64_t infoset) {
+inline uint8_t num_actions(uint64_t infoset, uint64_t move_count=9) {
   uint8_t actions = 0;
   for (; infoset; ++actions, infoset >>= 5)
     ;
@@ -109,23 +116,23 @@ inline uint8_t num_actions(uint64_t infoset) {
 }
 
 // get the infoset one action before (last action = rightmost bits)
-inline uint64_t parent_infoset(const uint64_t infoset) {
+inline uint64_t parent_infoset(const uint64_t infoset, uint64_t move_count=9) {
   assert(infoset);
   return infoset >> 5;
 }
 
 // get the last move (between 0 and 8) that was played
-inline uint8_t parent_action(const uint64_t infoset) {
+inline uint8_t parent_action(const uint64_t infoset, uint64_t move_count=9) {
   assert(infoset);
   return ((infoset >> 1) & 0b1111) - 1;
 }
 
-inline std::array<uint8_t, 9> infoset_xvec(uint64_t infoset) {
-  const uint8_t na = num_actions(infoset);
-  std::array<uint8_t, 9> x = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+inline std::vector<uint8_t> infoset_xvec(uint64_t infoset, uint64_t move_count=9) {
+  const uint8_t na = num_actions(infoset, move_count);
+  std::vector<uint8_t> x(move_count);
   for (int i = na; infoset; --i, infoset >>= 5) {
     const uint8_t co = infoset & 0b11111;
-    assert(co < 18 && i >= 1);
+    assert(co < 2*move_count && i >= 1);
     x[(co >> 1) - 1] = (i << 1) + (co & 1);
   }
   return x;

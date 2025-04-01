@@ -101,11 +101,12 @@ void register_types(py::module &m, const std::string &prefix) {
              }
            })
       .def("action_mask",
-           [](const T &s) -> std::array<bool, 9> {
-             std::array<bool, 9> mask;
-             for (uint32_t i = 0, a = s.available_actions(); i < 9;
+           [](const T &s) -> std::vector<bool> {
+             std::vector<bool> mask;
+             uint32_t moves = s.b_s * s.b_s;
+             for (uint32_t i = 0, a = s.available_actions(); i < moves;
                   ++i, a >>= 1) {
-               mask[i] = a & 1;
+               mask.push_back(a & 1);
              }
              return mask;
            })

@@ -96,16 +96,16 @@ void compute_gradients_thread(
 }
 } // namespace
 
-bool Treeplex::is_valid_vector(ConstRealBuf buf) const {
-  if (buf.size() != num_infosets() * 9)
+bool Treeplex::is_valid_vector(ConstRealBuf buf, uint32_t move_count) const {
+  if (buf.size() != num_infosets() * move_count)
     return false;
 
   for (const auto &it : infosets) {
     const uint32_t i = it.second.infoset_id;
     const uint32_t a = it.second.legal_actions;
-    for (uint32_t j = 0; j < 9; ++j) {
+    for (uint32_t j = 0; j < move_count; ++j) {
       if (!(a & (1 << j))) {
-        if (buf[i * 9 + j] != 0 || !std::isfinite(buf[i * 9 + j]))
+        if (buf[i * move_count + j] != 0 || !std::isfinite(buf[i * move_count + j]))
           return false;
       }
     }
@@ -113,22 +113,22 @@ bool Treeplex::is_valid_vector(ConstRealBuf buf) const {
   return true;
 }
 
-bool Treeplex::is_valid_strategy(ConstRealBuf buf) const {
-  if (buf.size() != num_infosets() * 9)
+bool Treeplex::is_valid_strategy(ConstRealBuf buf, uint32_t move_count) const {
+  if (buf.size() != num_infosets() * move_count)
     return false;
 
   for (const auto &it : infosets) {
     const uint32_t i = it.second.infoset_id;
     const uint32_t a = it.second.legal_actions;
     Real sum = 0;
-    for (uint32_t j = 0; j < 9; ++j) {
-      if (buf[i * 9 + j] < 0 || buf[i * 9 + j] > 1 ||
-          !std::isfinite(buf[i * 9 + j]))
+    for (uint32_t j = 0; j < move_count; ++j) {
+      if (buf[i * move_count + j] < 0 || buf[i * move_count + j] > 1 ||
+          !std::isfinite(buf[i * move_count + j]))
         return false;
 
       if (a & (1 << j)) {
-        sum += buf[i * 9 + j];
-      } else if (buf[i * 9 + j] != 0.) {
+        sum += buf[i * move_count + j];
+      } else if (buf[i * move_count + j] != 0.) {
         return false;
       }
     }
@@ -139,64 +139,64 @@ bool Treeplex::is_valid_strategy(ConstRealBuf buf) const {
   return true;
 }
 
-void Treeplex::set_uniform(RealBuf buf) const {
+void Treeplex::set_uniform(RealBuf buf, uint32_t move_count) const {
   for (const auto &it : infosets) {
     const uint32_t i = it.second.infoset_id;
     const uint32_t a = it.second.legal_actions;
     const uint8_t na = __builtin_popcount(a);
 
-    for (uint32_t j = 0; j < 9; ++j) {
+    for (uint32_t j = 0; j < move_count; ++j) {
       // !! is important to convert to 0 or 1
-      buf[i * 9 + j] = Real(is_valid(a, j)) / na;
+      buf[i * move_count + j] = Real(is_valid(a, j)) / na;
     }
   }
 
   assert(is_valid_strategy(buf));
 }
 
-void Treeplex::bh_to_sf(RealBuf buf) const {
+void Treeplex::bh_to_sf(RealBuf buf, uint32_t move_count) const {
   CHECK(is_valid_strategy(buf), "Buffer validation fails");
 
   for (uint32_t i = 1; i < num_infosets(); ++i) {
     const uint64_t info = infoset_keys[i];
     const uint32_t parent = parent_index[i];
-    const uint32_t parent_a = parent_action(info);
-    const Real parent_prob = buf[parent * 9 + parent_a];
+    const uint32_t parent_a = parent_action(info, move_count);
+    const Real parent_prob = buf[parent * move_count + parent_a];
 
-    for (uint32_t j = 0; j < 9; ++j) {
-      buf[i * 9 + j] *= parent_prob;
+    for (uint32_t j = 0; j < move_count; ++j) {
+      buf[i * move_count + j] *= parent_prob;
     }
   }
 
   assert(is_valid_vector(buf));
 }
 
-void Treeplex::sf_to_bh(RealBuf buf) const {
+void Treeplex::sf_to_bh(RealBuf buf, uint32_t move_count) const {
   CHECK(is_valid_vector(buf), "Buffer validation fails");
 
   for (const auto &it : infosets) {
     const uint32_t i = it.second.infoset_id;
     const uint32_t a = it.second.legal_actions;
     Real s = 0;
-    for (uint32_t j = 0; j < 9; ++j) {
-      s += (buf[i * 9 + j]) * is_valid(a, j);
+    for (uint32_t j = 0; j < move_count; ++j) {
+      s += (buf[i * move_count + j]) * is_valid(a, j);
     }
     if (s < SMALL) {
       s = 0;
-      for (uint32_t j = 0; j < 9; ++j) {
-        buf[i * 9 + j] = is_valid(a, j);
-        s += buf[i * 9 + j];
+      for (uint32_t j = 0; j < move_count; ++j) {
+        buf[i * move_count + j] = is_valid(a, j);
+        s += buf[i * move_count + j];
       }
     }
-    for (uint32_t j = 0; j < 9; ++j) {
-      buf[i * 9 + j] = buf[i * 9 + j] / s;
+    for (uint32_t j = 0; j < move_count; ++j) {
+      buf[i * move_count + j] = buf[i * move_count + j] / s;
     }
   }
 
   assert(is_valid_strategy(buf));
 }
 
-Real Treeplex::br(RealBuf buf, RealBuf strat) const {
+Real Treeplex::br(RealBuf buf, RealBuf strat, uint32_t move_count) const {
   std::fill(strat.begin(), strat.end(), 0.0);
 
   CHECK(is_valid_vector(buf), "Buffer validationa fails");
@@ -212,10 +212,10 @@ Real Treeplex::br(RealBuf buf, RealBuf strat) const {
 
     max_val = std::numeric_limits<Real>::lowest();
     uint8_t best_action = 0xff;
-    for (uint32_t j = 0; j < 9; ++j) {
-      if ((mask & (1 << j)) && (buf[i * 9 + j] > max_val)) {
+    for (uint32_t j = 0; j < move_count; ++j) {
+      if ((mask & (1 << j)) && (buf[i * move_count + j] > max_val)) {
         best_action = j;
-        max_val = buf[i * 9 + j];
+        max_val = buf[i * move_count + j];
       }
     }
     assert(best_action != 0xff);
@@ -223,10 +223,10 @@ Real Treeplex::br(RealBuf buf, RealBuf strat) const {
     if (i) {
       const uint32_t parent = parent_index[i];
       const uint32_t parent_a = parent_action(info);
-      buf[parent * 9 + parent_a] += max_val;
+      buf[parent * move_count + parent_a] += max_val;
     }
     if (!strat.empty()) {
-      strat[i * 9 + best_action] = 1.0;
+      strat[i * move_count + best_action] = 1.0;
     }
   }
 
@@ -237,13 +237,13 @@ Real Treeplex::br(RealBuf buf, RealBuf strat) const {
   return max_val;
 }
 
-void Treeplex::regret_to_bh(RealBuf buf) const {
+void Treeplex::regret_to_bh(RealBuf buf, uint32_t move_count) const {
   CHECK(is_valid_vector(buf), "Buffer validation fails");
 
   for (const auto &it : infosets) {
     const uint32_t i = it.second.infoset_id;
     const uint32_t a = it.second.legal_actions;
-    relu_normalize(buf.subspan(i * 9, 9), a);
+    relu_normalize(buf.subspan(i * move_count, move_count), a);
   }
 
   assert(is_valid_strategy(buf));

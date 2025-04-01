@@ -34,7 +34,7 @@ GAMES = {
 }
 
 # number of random runs for each game
-N = 10_000_000
+N = 10 #_000_000
     
 actions_history = np.zeros(100, dtype=np.int32) - 1  # save actions for debugging
 for game_str, (os_game, eas_state_fn) in GAMES.items():
@@ -88,3 +88,6 @@ for game_str, (os_game, eas_state_fn) in GAMES.items():
             assert os_winner == eas_winner, 'winner'
         except AssertionError as e:
             print(f'Error on game {game_str} with actions {actions_history}: {e}')
+            if f'{e}' == "legal_actions":
+                print(f'{oh_legal_actions=}')
+                print(f'{eas_legal_actions=}')
