@@ -24,17 +24,25 @@ GAMES = {
         eas.AbruptPtttState
     ),
     'Classical 3x3 Dark Hex': (
-        pyspiel.load_game('dark_hex(board_size=4,gameversion=cdh)'),
+        pyspiel.load_game('dark_hex(board_size=3,gameversion=cdh)'),
         eas.DhState
     ),
     'Abrupt 3x3 Dark Hex': (
+        pyspiel.load_game('dark_hex(board_size=3,gameversion=adh)'),
+        eas.AbruptDhState
+    ),
+    'Classical 4x4 Dark Hex': (
+        pyspiel.load_game('dark_hex(board_size=4,gameversion=cdh)'),
+        eas.DhState
+    ),
+    'Abrupt 4x4 Dark Hex': (
         pyspiel.load_game('dark_hex(board_size=4,gameversion=adh)'),
         eas.AbruptDhState
     ),
 }
 
 # number of random runs for each game
-N = 10 #_000_000
+N = 1000 #_000_000
     
 actions_history = np.zeros(100, dtype=np.int32) - 1  # save actions for debugging
 for game_str, (os_game, eas_state_fn) in GAMES.items():
