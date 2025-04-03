@@ -10,6 +10,8 @@
 
 #include <vector>
 
+#include <boost/multiprecision/cpp_int.hpp>
+
 const uint8_t TIE = 0xee;
 
 template <bool abrupt, uint32_t board_s = 3> struct BaseState {
@@ -70,7 +72,7 @@ template <bool abrupt, uint32_t board_s = 3> struct BaseState {
   // 0b1111) - 1` contains the cell between 0 and 8) the latest move is encoded
   // in the rightmost 5 bits in total the 5*t_ rightmost bits are used, the
   // others are left to 0
-  uint64_t get_infoset() const {
+  boost::multiprecision::cpp_int get_infoset() const {
     uint64_t info = 0;
     uint8_t t_ = t[p];
     for (int i = 0; i < move_count; ++i) {
