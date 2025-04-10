@@ -6,6 +6,7 @@
 #include <cstring>
 #include <limits>
 #include <omp.h>
+#include <boost/multiprecision/cpp_int.hpp>
 
 #include "averager.h"
 #include "base_state.h"
@@ -18,11 +19,11 @@ using std::size_t;
 
 namespace {
 template <typename T>
-uint64_t discover_infosets_thread(T root, PerPlayer<InfosetMap> *infosets) {
+unsigned long discover_infosets_thread(T root, PerPlayer<InfosetMap> *infosets) {
   T stack[100];
   stack[0] = root;
   size_t stack_len = 1;
-  uint64_t count = 0;
+  unsigned long count = 0;
 
   while (stack_len) {
     // Pop from stack
@@ -32,7 +33,7 @@ uint64_t discover_infosets_thread(T root, PerPlayer<InfosetMap> *infosets) {
 
     if (s.winner() == 0xff) {
       uint32_t a = s.available_actions();
-      const uint64_t info = s.get_infoset();
+      const boost::multiprecision::cpp_int info = s.get_infoset();
       const InfosetMetadata md{
           .legal_actions = a,
           .infoset_id = UINT32_MAX,
@@ -71,7 +72,7 @@ void compute_gradients_thread(
     const T &s = std::get<0>(it);
     const uint8_t p = s.player();
     const uint8_t w = s.winner();
-    const uint64_t infoset = s.get_infoset();
+    const boost::multiprecision::cpp_int infoset = s.get_infoset();
     const PerPlayer<uint32_t> &seqs = std::get<1>(it);
 
     if (w == 0xff) {
@@ -158,7 +159,7 @@ void Treeplex::bh_to_sf(RealBuf buf, uint32_t move_count) const {
   CHECK(is_valid_strategy(buf), "Buffer validation fails");
 
   for (uint32_t i = 1; i < num_infosets(); ++i) {
-    const uint64_t info = infoset_keys[i];
+    const boost::multiprecision::cpp_int info = infoset_keys[i];
     const uint32_t parent = parent_index[i];
     const uint32_t parent_a = parent_action(info, move_count);
     const Real parent_prob = buf[parent * move_count + parent_a];
@@ -207,7 +208,7 @@ Real Treeplex::br(RealBuf buf, RealBuf strat, uint32_t move_count) const {
 
   Real max_val = std::numeric_limits<Real>::lowest();
   for (int32_t i = num_infosets() - 1; i >= 0; --i) {
-    const uint64_t info = infoset_keys[i];
+    const boost::multiprecision::cpp_int info = infoset_keys[i];
     const uint32_t mask = legal_actions[i];
 
     max_val = std::numeric_limits<Real>::lowest();
@@ -269,7 +270,7 @@ template <typename T> Traverser<T>::Traverser() {
   }
 
   INFO("discovering infosets (num threads: %d)...", omp_get_max_threads());
-  uint64_t count = 10;
+  unsigned long count = 10;
 #pragma omp parallel for reduction(+ : count)
   for (int i = 0; i < 9 * 9; ++i) {
     T s{};
@@ -289,7 +290,7 @@ template <typename T> Traverser<T>::Traverser() {
     }
 
     PerPlayer<InfosetMap> thread_infosets;
-    const uint64_t thread_count =
+    const unsigned long thread_count =
         ::discover_infosets_thread(s, &thread_infosets);
     count += thread_count;
 
@@ -309,7 +310,7 @@ template <typename T> Traverser<T>::Traverser() {
        count / 1e9);
 
 #ifdef DEBUG
-  PerPlayer<uint64_t> root_infoset_keys = {0, 0};
+  PerPlayer<boost::multiprecision::cpp_int> root_infoset_keys = {0, 0};
   root_infoset_keys[0] = T{}.get_infoset();
   {
     T state;
@@ -319,13 +320,13 @@ template <typename T> Traverser<T>::Traverser() {
     state.next(a);
     root_infoset_keys[1] = state.get_infoset();
   }
-  INFO("root infosets: %ld, %ld", root_infoset_keys[0], root_infoset_keys[1]);
+  INFO("root infosets: %s, %s", root_infoset_keys[0].str().c_str(), root_infoset_keys[1].str().c_str());
   for (auto p : {0, 1}) {
     INFO("checking infosets of player %d...", p);
     for (const auto &it : treeplex[p]->infosets) {
-      const uint64_t infoset = it.first;
+      const boost::multiprecision infoset = it.first;
       if (infoset != root_infoset_keys[p]) {
-        const uint64_t parent = parent_infoset(infoset);
+        const boost::multiprecision parent = parent_infoset(infoset);
         CHECK(parent <= infoset, "Parent infoset is greater than child");
         CHECK(treeplex[p]->infosets.count(parent),
               "Parent infoset %ld (%s) of %ld (%s) not found", parent,
@@ -353,7 +354,7 @@ template <typename T> Traverser<T>::Traverser() {
     std::sort(treeplex[p]->infoset_keys.begin(),
               treeplex[p]->infoset_keys.end());
     for (uint32_t i = 0; i < treeplex[p]->infoset_keys.size(); ++i) {
-      const uint64_t infoset = treeplex[p]->infoset_keys[i];
+      const boost::multiprecision::cpp_int infoset = treeplex[p]->infoset_keys[i];
       assert(treeplex[p]->infosets.count(infoset));
 
       auto &info = treeplex[p]->infosets[infoset];
@@ -489,9 +490,9 @@ Traverser<T>::ev_and_exploitability(const PerPlayer<ConstRealBuf> strategies) {
 }
 
 template <typename T>
-void Traverser<T>::compute_openspiel_infostate(const uint8_t p, int64_t i,
+void Traverser<T>::compute_openspiel_infostate(const uint8_t p, size_t i,
                                                std::span<bool> buf) const {
-  uint64_t info = treeplex[p]->infoset_keys[i];
+  boost::multiprecision::cpp_int info = treeplex[p]->infoset_keys[i];
   T::compute_openspiel_infostate(p, info, buf);
 }
 

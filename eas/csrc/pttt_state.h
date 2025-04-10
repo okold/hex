@@ -84,15 +84,15 @@ struct PtttState : public BaseState<abrupt> {
     return out;
   }
 
-  static void compute_openspiel_infostate(uint8_t player, uint64_t info,
+  static void compute_openspiel_infostate(uint8_t player, boost::multiprecision::cpp_int info,
                                           std::span<bool> buf) {
     const uint8_t n_actions = num_actions(info);
     std::fill(buf.begin(), buf.end(), 0);
     // Mark first 9 cells as empty
     std::fill(buf.begin(), buf.begin() + 9, true);
     for (uint32_t j = 0; info; info >>= 5, ++j) {
-      const uint8_t cell = ((info >> 1) & 0b1111) - 1;
-      const bool placed = info & 1;
+      const uint8_t cell = (((info >> 1) & 0b1111) - 1).convert_to<uint8_t>();
+      const bool placed = (info & 1) ? true : false;
       assert(cell < 9);
 
       buf[cell] = false;
