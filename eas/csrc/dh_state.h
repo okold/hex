@@ -2,6 +2,7 @@
 
 #include <bitset>
 #include <cstdint>
+#include <boost/multiprecision/cpp_int.hpp>
 
 #include "base_state.h"
 #include "utils.h"
@@ -61,7 +62,7 @@ inline std::string dh_xvec_str(const uint8_t *x, const char c) {
 }
 
 template <bool abrupt>
-struct DhState : public BaseState<abrupt, 4> {
+struct DhState : public BaseState<abrupt, 3> {
   static constexpr uint32_t num_cells = 9;
   // new openspiel uses these :upsidedown:
   static constexpr uint32_t bits_per_action = num_cells;
@@ -141,20 +142,20 @@ struct DhState : public BaseState<abrupt, 4> {
     return out;
   }
 
-  static void compute_openspiel_infostate(uint8_t player, uint64_t info,
+  static void compute_openspiel_infostate(uint8_t player, boost::multiprecision::cpp_int info,
                                           std::span<bool> buf) {
     std::fill(buf.begin(), buf.end(), false);
     PerPlayer<std::bitset<9>> b{};
     int n_actions = 0, m_actions = 0;
-    for (uint64_t i = info; i; i >>= 5, ++n_actions) {
-      bool success = i & 1;
-      uint8_t cell = ((i >> 1) & 0b1111) - 1;
+    for (boost::multiprecision::cpp_int i = info; i; i >>= 5, ++n_actions) {
+      bool success = i & 1 ? true : false;
+      uint8_t cell = (((i >> 1) & 0b1111) - 1).convert_to<uint8_t>();
       uint8_t p = success ? player : 1 - player;
       b[p][cell] = true;
     }
 
-    for (uint64_t i = info; i; i >>= 5, ++m_actions){
-      uint8_t cell = ((i >> 1) & 0b1111) - 1;
+    for (boost::multiprecision::cpp_int i = info; i; i >>= 5, ++m_actions){
+      uint8_t cell = (((i >> 1) & 0b1111) - 1).convert_to<uint8_t>();
       buf[num_cells * cell_states + (n_actions - 1 - m_actions) * bits_per_action + cell] = true;
     }
 

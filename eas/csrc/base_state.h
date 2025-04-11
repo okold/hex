@@ -10,7 +10,14 @@
 
 #include <vector>
 
+#include <boost/multiprecision/cpp_int.hpp>
+
 const uint8_t TIE = 0xee;
+
+inline uint32_t move_size(int move_count) {
+  return 32 - __builtin_clz(move_count) + 1;
+  // one bit for the player, others left board location
+}
 
 template <bool abrupt, uint32_t board_s = 3> struct BaseState {
   
@@ -53,7 +60,7 @@ template <bool abrupt, uint32_t board_s = 3> struct BaseState {
 
   uint32_t available_actions() const {
     uint32_t actions = 0;
-    for (int i = 0; i < move_count; ++i) {
+    for (uint32_t i = 0; i < move_count; ++i) {
       if (!x[p][i]) {
         actions |= (1 << i);
       }
@@ -70,19 +77,20 @@ template <bool abrupt, uint32_t board_s = 3> struct BaseState {
   // 0b1111) - 1` contains the cell between 0 and 8) the latest move is encoded
   // in the rightmost 5 bits in total the 5*t_ rightmost bits are used, the
   // others are left to 0
-  uint64_t get_infoset() const {
-    uint64_t info = 0;
+  boost::multiprecision::cpp_int get_infoset() const {
+    boost::multiprecision::cpp_int info = 0;
     uint8_t t_ = t[p];
+    int state_req = move_size(move_count);
     for (int i = 0; i < move_count; ++i) {
       const uint8_t to = x[p][i];
       const uint8_t td = t_ - (x[p][i] >> 1);
       assert(td <= move_count);
-      info |= uint64_t(((i + 1) << 1) + (to & 1)) << (5 * td);
+      info |= boost::multiprecision::cpp_int(((i + 1) << 1) + (to & 1)) << (move_size(move_count) * td);
     }
     // if a cell hasn't been played, td = t_ and this is stored in the infoset
     // -> there have only been t_ moves played, so set all bits past the
     // (5*t_)'s bit to 0
-    info &= (uint64_t(1) << (5 * t_)) - 1;
+    info &= (boost::multiprecision::cpp_int(1) << (move_size(move_count) * t_)) - 1;
     return info;
   }
 
@@ -108,41 +116,45 @@ template <bool abrupt, uint32_t board_s = 3> struct BaseState {
 };
 
 // get total number of moves played so far
-inline uint8_t num_actions(uint64_t infoset, uint64_t move_count=9) {
+inline uint8_t num_actions(boost::multiprecision::cpp_int infoset, uint64_t move_count=9) {
   uint8_t actions = 0;
-  for (; infoset; ++actions, infoset >>= 5)
+  for (; infoset; ++actions, infoset >>= move_size(move_count))
     ;
   return actions;
 }
 
 // get the infoset one action before (last action = rightmost bits)
-inline uint64_t parent_infoset(const uint64_t infoset, uint64_t move_count=9) {
+inline boost::multiprecision::cpp_int parent_infoset(boost::multiprecision::cpp_int infoset, uint64_t move_count=9) {
   assert(infoset);
-  return infoset >> 5;
+  return infoset >> move_size(move_count);
 }
 
 // get the last move (between 0 and 8) that was played
-inline uint8_t parent_action(const uint64_t infoset, uint64_t move_count=9) {
+inline uint32_t parent_action(boost::multiprecision::cpp_int infoset, uint64_t move_count=9) {
   assert(infoset);
-  return ((infoset >> 1) & 0b1111) - 1;
+  uint32_t mask = (1 << (move_size(move_count)-1))-1;
+  uint32_t pos = (((infoset >> 1) & mask) - 1).convert_to<uint32_t>();
+  return pos;
 }
 
-inline std::vector<uint8_t> infoset_xvec(uint64_t infoset, uint64_t move_count=9) {
+inline std::vector<uint8_t> infoset_xvec(boost::multiprecision::cpp_int infoset, uint64_t move_count=9) {
   const uint8_t na = num_actions(infoset, move_count);
   std::vector<uint8_t> x(move_count);
-  for (int i = na; infoset; --i, infoset >>= 5) {
-    const uint8_t co = infoset & 0b11111;
+  for (int i = na; infoset; --i, infoset >>= move_size(move_count)) {
+    uint32_t mask = (1 << move_size(move_count))-1;
+    const uint8_t co = (infoset & mask).convert_to<uint8_t>();
     assert(co < 2*move_count && i >= 1);
     x[(co >> 1) - 1] = (i << 1) + (co & 1);
   }
   return x;
 }
 
-inline std::string infoset_desc(uint64_t key) {
+inline std::string infoset_desc(boost::multiprecision::cpp_int key, uint64_t move_count=9) {
   std::string out = "";
-  for (; key; key >>= 5) {
+  uint32_t mask = (1 << move_size(move_count))-2;
+  for (; key; key >>= move_size(move_count)) {
     out += (key & 1) ? '*' : '.';
-    out += std::to_string(((key & 0b11110) >> 1) - 1);
+    out += std::to_string((((key & mask) >> 1) - 1).convert_to<uint32_t>());
   }
   std::reverse(out.begin(), out.end());
   return out;

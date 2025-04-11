@@ -2,6 +2,7 @@
 
 #include <array>
 #include <boost/unordered/unordered_flat_map.hpp>
+#include <boost/multiprecision/cpp_int.hpp>
 #include <cstdint>
 #include <span>
 #include <valarray>
@@ -21,11 +22,11 @@ struct InfosetMetadata {
 };
 
 // Maps from infoset to legal action mask
-using InfosetMap = boost::unordered_flat_map<uint64_t, InfosetMetadata>;
+using InfosetMap = boost::unordered_flat_map<boost::multiprecision::cpp_int, InfosetMetadata>;
 
 struct Treeplex {
   InfosetMap infosets;
-  std::vector<uint64_t> infoset_keys;
+  std::vector<boost::multiprecision::cpp_int> infoset_keys;
   std::vector<uint32_t> legal_actions;
   std::vector<uint32_t> parent_index;
   uint32_t move_count;
@@ -58,7 +59,7 @@ template <typename T> struct Traverser {
   void compute_gradients(const PerPlayer<ConstRealBuf> strategies);
   EvExpl ev_and_exploitability(const PerPlayer<ConstRealBuf> strategies);
   Averager new_averager(const uint8_t player, const AveragingStrategy avg);
-  void compute_openspiel_infostate(const uint8_t player, int64_t i, std::span<bool> buf) const;
+  void compute_openspiel_infostate(const uint8_t player, size_t i, std::span<bool> buf) const;
   void compute_openspiel_infostates(const uint8_t player, std::span<bool> buf) const;
 
 private:

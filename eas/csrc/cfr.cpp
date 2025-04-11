@@ -81,7 +81,7 @@ template <typename T> Real CfrSolver<T>::update_prediction_(int p) {
 
   Real ev = 0;
   for (int32_t i = traverser_->treeplex[p]->num_infosets() - 1; i >= 0; --i) {
-    const uint64_t info = traverser_->treeplex[p]->infoset_keys[i];
+    const boost::multiprecision::cpp_int info = traverser_->treeplex[p]->infoset_keys[i];
     const uint32_t mask = traverser_->treeplex[p]->legal_actions[i];
 
     ev = dot(std::span(gradient_copy_).subspan(i * 9, 9),
@@ -118,7 +118,7 @@ template <typename T> Real CfrSolver<T>::update_regrets_(int p) {
 
   Real ev = 0;
   for (int32_t i = traverser_->treeplex[p]->num_infosets() - 1; i >= 0; --i) {
-    const uint64_t info = traverser_->treeplex[p]->infoset_keys[i];
+    const boost::multiprecision::cpp_int info = traverser_->treeplex[p]->infoset_keys[i];
     const uint32_t mask = traverser_->treeplex[p]->legal_actions[i];
 
     ev = dot(std::span(traverser_->gradients[p]).subspan(i * 9, 9),

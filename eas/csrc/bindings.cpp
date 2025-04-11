@@ -3,6 +3,11 @@
 #include <pybind11/pytypes.h>
 #include <pybind11/stl.h>
 
+// ChatGPT-provided casting code using strings as an intermediary
+#include "pybind_boost_cpp_int.hpp"
+
+
+
 #include <array>
 #include <cstdint>
 #include <iomanip>
@@ -163,7 +168,7 @@ void register_types(py::module &m, const std::string &prefix) {
             CHECK(row < traverser.treeplex[p]->num_infosets(),
                   "Invalid row (expected < %d; found %d)",
                   traverser.treeplex[p]->num_infosets(), row);
-            uint64_t key = traverser.treeplex[p]->infoset_keys.at(row);
+            boost::multiprecision::cpp_int key = traverser.treeplex[p]->infoset_keys.at(row);
             return infoset_desc(key);
           },
           py::arg("player"), py::arg("row"))
@@ -171,7 +176,7 @@ void register_types(py::module &m, const std::string &prefix) {
           "row_for_infoset",
           [](const Traverser<T> &traverser, const uint8_t p,
              const std::string infoset_desc) -> uint32_t {
-            uint64_t infoset_key = 0;
+            boost::multiprecision::cpp_int infoset_key = 0;
             CHECK(infoset_desc.size() % 2 == 0,
                   "Infoset desc does not have even length");
             for (size_t i = 0; i < infoset_desc.size() / 2; ++i) {
