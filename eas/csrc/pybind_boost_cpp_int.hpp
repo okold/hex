@@ -24,7 +24,7 @@ public:
     static handle cast(const boost::multiprecision::cpp_int &src,
                        return_value_policy /* policy */,
                        handle /* parent */) {
-        return py::int_(py::str(src.str())).release();
+        return PyLong_FromString(src.str().c_str(), nullptr, 10);
     }
 };
 

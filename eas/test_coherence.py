@@ -42,7 +42,7 @@ GAMES = {
 }
 
 # number of random runs for each game
-N = 1000 #_000_000
+N = 10_000 #_000_000
     
 actions_history = np.zeros(100, dtype=np.int32) - 1  # save actions for debugging
 for game_str, (os_game, eas_state_fn) in GAMES.items():
@@ -53,10 +53,10 @@ for game_str, (os_game, eas_state_fn) in GAMES.items():
     for i in range(1, N+1):
         try:
             actions_history[:] = -1
-            if i % 100_000 == 0:
+            if i % 10_000 == 0:
                 t_elapsed = time.time() - t0
                 t_remaining = (N - i) * t_elapsed / i
-                print(f'{i}/{N} ; {t_elapsed/60:.1f}min elapsed ; {t_remaining/60:.1f}min remaining')
+                print(f'{i}/{N} ; {t_elapsed:.1f}sec elapsed ; {t_remaining/60:.1f}min remaining')
             # new initial state
             os_state = os_game.new_initial_state()
             eas_state = eas_state_fn()
