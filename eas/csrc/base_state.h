@@ -80,8 +80,8 @@ template <bool abrupt, uint32_t board_s = 3> struct BaseState {
   boost::multiprecision::cpp_int get_infoset() const {
     boost::multiprecision::cpp_int info = 0;
     uint8_t t_ = t[p];
-    int state_req = move_size(move_count);
-    for (int i = 0; i < move_count; ++i) {
+    // int state_req = move_size(move_count);
+    for (uint32_t i = 0; i < move_count; ++i) {
       const uint8_t to = x[p][i];
       const uint8_t td = t_ - (x[p][i] >> 1);
       assert(td <= move_count);
