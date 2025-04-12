@@ -63,7 +63,7 @@ template <typename T> struct Traverser {
   void compute_openspiel_infostates(const uint8_t player, std::span<bool> buf) const;
 
 private:
-  PerPlayer<std::array<std::valarray<Real>, 9>> bufs_;
+  PerPlayer<std::array<std::valarray<Real>, (T::move_count)>> bufs_;
   PerPlayer<std::valarray<Real>> sf_strategies_;
 
   void compute_sf_strategies_(const PerPlayer<ConstRealBuf> strategies);

@@ -18,7 +18,7 @@
 using std::size_t;
 
 namespace {
-template <typename T>
+template <typename T> // T must extend base_state
 unsigned long discover_infosets_thread(T root, PerPlayer<InfosetMap> *infosets) {
   T stack[100];
   stack[0] = root;
@@ -41,7 +41,7 @@ unsigned long discover_infosets_thread(T root, PerPlayer<InfosetMap> *infosets) 
       assert(!(*infosets)[p].count(info) || (*infosets)[p][info] == md);
       (*infosets)[p][info] = md;
 
-      for (int i = 0; i < 9; ++i, a >>= 1) {
+      for (int i = 0; i < T::move_count; ++i, a >>= 1) {
         if (a & 1) {
           T ss = s;
           ss.next(i);
@@ -84,7 +84,7 @@ void compute_gradients_thread(
         if (a & 1) {
           T ss = s;
           ss.next(i);
-          new_seqs[p] = 9 * info_id + i;
+          new_seqs[p] = T::move_count * info_id + i;
           stack[stack_len++] = {ss, new_seqs};
         }
       }
@@ -261,7 +261,7 @@ template <typename T> Traverser<T>::Traverser() {
     treeplex[0]->infosets[root.get_infoset()] = InfosetMetadata{
         .legal_actions = root.available_actions(), .infoset_id = UINT32_MAX};
     uint8_t a = 0;
-    for (a = 0; a < 9 && !is_valid(root.available_actions(), a); ++a)
+    for (a = 0; a < T::move_count && !is_valid(root.available_actions(), a); ++a)
       ;
     root.next(a);
     assert(root.player() == 1);
@@ -271,18 +271,19 @@ template <typename T> Traverser<T>::Traverser() {
 
   INFO("discovering infosets (num threads: %d)...", omp_get_max_threads());
   unsigned long count = 10;
+  const T temp{};
 #pragma omp parallel for reduction(+ : count)
-  for (int i = 0; i < 9 * 9; ++i) {
+  for (int i = 0; i < T::move_count * T::move_count; ++i) {
     T s{};
     {
-      const uint8_t a = i % 9;
+      const uint8_t a = i % T::move_count;
       assert(treeplex[0]->infosets.count(s.get_infoset()));
       if (!is_valid(s.available_actions(), a))
         continue;
       s.next(a);
     }
     {
-      const uint8_t a = i / 9;
+      const uint8_t a = i / T::move_count;
       assert(s.player() == 1 && treeplex[1]->infosets.count(s.get_infoset()));
       if (!is_valid(s.available_actions(), a))
         continue;
@@ -315,7 +316,7 @@ template <typename T> Traverser<T>::Traverser() {
   {
     T state;
     uint8_t a = 0;
-    for (a = 0; a < 9 && !is_valid(state.available_actions(), a); ++a)
+    for (a = 0; a < state.move_count && !is_valid(state.available_actions(), a); ++a)
       ;
     state.next(a);
     root_infoset_keys[1] = state.get_infoset();
@@ -373,12 +374,12 @@ template <typename T> Traverser<T>::Traverser() {
            treeplex[player]->parent_index.size() ==
                treeplex[player]->infosets.size());
 
-    for (int i = 0; i < 9; ++i) {
-      bufs_[player][i].resize(treeplex[player]->num_infosets() * 9);
+    for (int i = 0; i < T::move_count; ++i) {
+      bufs_[player][i].resize(treeplex[player]->num_infosets() * T::move_count);
     }
 
-    gradients[player].resize(treeplex[player]->num_infosets() * 9, 0.0);
-    sf_strategies_[player].resize(treeplex[player]->num_infosets() * 9, 0.0);
+    gradients[player].resize(treeplex[player]->num_infosets() * T::move_count, 0.0);
+    sf_strategies_[player].resize(treeplex[player]->num_infosets() * T::move_count, 0.0);
   }
 
   INFO("... all done.");
@@ -395,37 +396,37 @@ void Traverser<T>::compute_gradients(const PerPlayer<ConstRealBuf> strategies) {
   }
 
   compute_sf_strategies_(strategies);
-
+  const T temp{};
   for (auto p : {0, 1}) {
     gradients[p] = 0.0;
 
-    for (int i = 0; i < 9; ++i) {
+    for (int i = 0; i < T::move_count; ++i) {
       bufs_[p][i] = 0.0;
     }
   }
 
   uint32_t num_finished = 0;
 #pragma omp parallel for
-  for (unsigned i = 0; i < 9 * 9; ++i) {
+  for (unsigned i = 0; i < T::move_count * T::move_count; ++i) {
     PerPlayer<uint32_t> parent_seqs = {0, 0};
     T s{};
 
-    if (!is_valid(s.available_actions(), i % 9))
+    if (!is_valid(s.available_actions(), i % T::move_count))
       continue;
     assert(s.player() == 0);
     parent_seqs[0] =
-        treeplex[0]->infosets.at(s.get_infoset()).infoset_id * 9 + (i % 9);
-    s.next(i % 9); // pl1's move
+        treeplex[0]->infosets.at(s.get_infoset()).infoset_id * T::move_count + (i % T::move_count);
+    s.next(i % T::move_count); // pl1's move
 
-    if (!is_valid(s.available_actions(), i / 9))
+    if (!is_valid(s.available_actions(), i / T::move_count))
       continue;
     assert(s.player() == 1);
     parent_seqs[1] =
-        treeplex[1]->infosets.at(s.get_infoset()).infoset_id * 9 + (i / 9);
-    s.next(i / 9); // pl2's move
+        treeplex[1]->infosets.at(s.get_infoset()).infoset_id * T::move_count + (i / T::move_count);
+    s.next(i / T::move_count); // pl2's move
 
-    const PerPlayer<RealBuf> thread_gradients = {bufs_[0][i / 9],
-                                                 bufs_[1][i % 9]};
+    const PerPlayer<RealBuf> thread_gradients = {bufs_[0][i / T::move_count],
+                                                 bufs_[1][i % T::move_count]};
     ::compute_gradients_thread(s, parent_seqs, treeplex,
                                {sf_strategies_[0], sf_strategies_[1]},
                                thread_gradients);
@@ -443,7 +444,7 @@ void Traverser<T>::compute_gradients(const PerPlayer<ConstRealBuf> strategies) {
 
 #pragma omp parallel for
   for (int p = 0; p < 2; ++p) {
-    for (int j = 0; j < 9; ++j) {
+    for (int j = 0; j < T::move_count; ++j) {
       assert(treeplex[p]->is_valid_vector(bufs_[p][j]));
       gradients[p] += bufs_[p][j];
     }
@@ -461,6 +462,7 @@ template <typename T>
 EvExpl
 Traverser<T>::ev_and_exploitability(const PerPlayer<ConstRealBuf> strategies) {
   EvExpl out;
+  const T temp{};
 
   INFO("begin exploitability computation...");
   compute_gradients(strategies);
@@ -476,7 +478,7 @@ Traverser<T>::ev_and_exploitability(const PerPlayer<ConstRealBuf> strategies) {
         ev1);
   out.expl = {ev0, -ev0};
   for (auto p : {0, 1})
-    out.best_response[p].resize(treeplex[p]->num_infosets() * 9, 0.0);
+    out.best_response[p].resize(treeplex[p]->num_infosets() * T::move_count, 0.0);
 
   INFO("computing exploitabilities...");
 #pragma omp parallel for

@@ -32,7 +32,7 @@ template <bool abrupt, uint32_t board_s = 3> struct BaseState {
   uint8_t t[2]; // turn
 
   static constexpr uint32_t b_s = board_s;
-  uint32_t move_count = b_s*b_s;
+  static constexpr uint32_t move_count = b_s*b_s;
 
   BaseState()
       : x{}, p{0},
