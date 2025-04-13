@@ -22,7 +22,8 @@ struct Treeplex;
 class Averager {
 public:
   Averager(std::shared_ptr<Treeplex> treeplex,
-           const AveragingStrategy avg = UNIFORM);
+           const AveragingStrategy avg = UNIFORM,
+           const uint32_t move_count = 9);
 
   // Weight must be set for CUSTOM averaging strategy, and must be none for
   // other averaging strategies.
@@ -36,6 +37,7 @@ private:
   AveragingStrategy avg_;
   Real weight_sum_ = 0.;
   size_t num_ = 0;
+  uint32_t move_count;
 
   std::valarray<Real> sf_;
   std::valarray<Real> buf_;

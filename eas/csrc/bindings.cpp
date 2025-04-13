@@ -204,8 +204,8 @@ void register_types(py::module &m, const std::string &prefix) {
 
              for (int p = 0; p < 2; ++p) {
                const uint32_t rows = traverser.treeplex[p]->num_infosets();
-               std::valarray<Real> strategy(0.0, rows * 9);
-               traverser.treeplex[p]->set_uniform(strategy);
+               std::valarray<Real> strategy(0.0, rows * T::move_count);
+               traverser.treeplex[p]->set_uniform(strategy, T::move_count);
                out[p] = to_ndarray(strategy);
              }
 
@@ -239,7 +239,7 @@ void register_types(py::module &m, const std::string &prefix) {
            [](const Traverser<T> &traverser, const uint8_t p,
               const NdArray &strategy) {
              return traverser.treeplex[p]->is_valid_strategy(
-                 to_const_span(strategy));
+                 to_const_span(strategy), T::move_count);
            })
       .def_property_readonly("NUM_INFOS_PL0",
                              [](const Traverser<T> &traverser) {

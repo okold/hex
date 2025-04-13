@@ -152,11 +152,11 @@ void Treeplex::set_uniform(RealBuf buf, uint32_t move_count) const {
     }
   }
 
-  assert(is_valid_strategy(buf));
+  assert(is_valid_strategy(buf, move_count));
 }
 
 void Treeplex::bh_to_sf(RealBuf buf, uint32_t move_count) const {
-  CHECK(is_valid_strategy(buf), "Buffer validation fails");
+  CHECK(is_valid_strategy(buf, move_count), "Buffer validation fails");
 
   for (uint32_t i = 1; i < num_infosets(); ++i) {
     const boost::multiprecision::cpp_int info = infoset_keys[i];
@@ -169,11 +169,11 @@ void Treeplex::bh_to_sf(RealBuf buf, uint32_t move_count) const {
     }
   }
 
-  assert(is_valid_vector(buf));
+  assert(is_valid_vector(buf, move_count));
 }
 
 void Treeplex::sf_to_bh(RealBuf buf, uint32_t move_count) const {
-  CHECK(is_valid_vector(buf), "Buffer validation fails");
+  CHECK(is_valid_vector(buf, move_count), "Buffer validation fails");
 
   for (const auto &it : infosets) {
     const uint32_t i = it.second.infoset_id;
@@ -194,15 +194,15 @@ void Treeplex::sf_to_bh(RealBuf buf, uint32_t move_count) const {
     }
   }
 
-  assert(is_valid_strategy(buf));
+  assert(is_valid_strategy(buf, move_count));
 }
 
 Real Treeplex::br(RealBuf buf, RealBuf strat, uint32_t move_count) const {
   std::fill(strat.begin(), strat.end(), 0.0);
 
-  CHECK(is_valid_vector(buf), "Buffer validationa fails");
+  CHECK(is_valid_vector(buf, move_count), "Buffer validationa fails");
   if (!strat.empty()) {
-    CHECK(is_valid_vector(buf),
+    CHECK(is_valid_vector(buf, move_count),
           "Buffer validation for destination strategy fails");
   }
 
@@ -232,14 +232,14 @@ Real Treeplex::br(RealBuf buf, RealBuf strat, uint32_t move_count) const {
   }
 
   if (!strat.empty()) {
-    assert(is_valid_strategy(strat));
+    assert(is_valid_strategy(strat, move_count));
   }
 
   return max_val;
 }
 
 void Treeplex::regret_to_bh(RealBuf buf, uint32_t move_count) const {
-  CHECK(is_valid_vector(buf), "Buffer validation fails");
+  CHECK(is_valid_vector(buf, move_count), "Buffer validation fails");
 
   for (const auto &it : infosets) {
     const uint32_t i = it.second.infoset_id;
@@ -247,7 +247,7 @@ void Treeplex::regret_to_bh(RealBuf buf, uint32_t move_count) const {
     relu_normalize(buf.subspan(i * move_count, move_count), a);
   }
 
-  assert(is_valid_strategy(buf));
+  assert(is_valid_strategy(buf, move_count));
 }
 
 template <typename T> Traverser<T>::Traverser() {
@@ -390,8 +390,8 @@ void Traverser<T>::compute_gradients(const PerPlayer<ConstRealBuf> strategies) {
   INFO("begin gradient computation (num threads: %d)...",
        omp_get_max_threads());
   for (auto p : {0, 1}) {
-    CHECK(treeplex[p]->is_valid_strategy(strategies[p]), "Invalid strategy");
-    CHECK(treeplex[p]->is_valid_vector(gradients[p]),
+    CHECK(treeplex[p]->is_valid_strategy(strategies[p], T::move_count), "Invalid strategy");
+    CHECK(treeplex[p]->is_valid_vector(gradients[p], T::move_count),
           "Buffer validation fails");
   }
 
@@ -445,7 +445,7 @@ void Traverser<T>::compute_gradients(const PerPlayer<ConstRealBuf> strategies) {
 #pragma omp parallel for
   for (int p = 0; p < 2; ++p) {
     for (int j = 0; j < T::move_count; ++j) {
-      assert(treeplex[p]->is_valid_vector(bufs_[p][j]));
+      assert(treeplex[p]->is_valid_vector(bufs_[p][j], T::move_count));
       gradients[p] += bufs_[p][j];
     }
   }
@@ -453,7 +453,7 @@ void Traverser<T>::compute_gradients(const PerPlayer<ConstRealBuf> strategies) {
   INFO("... all done.");
 #ifndef NDEBUG
   for (auto p : {0, 1}) {
-    assert(treeplex[p]->is_valid_vector(gradients[p]));
+    assert(treeplex[p]->is_valid_vector(gradients[p], T::move_count));
   }
 #endif
 }
@@ -483,7 +483,7 @@ Traverser<T>::ev_and_exploitability(const PerPlayer<ConstRealBuf> strategies) {
   INFO("computing exploitabilities...");
 #pragma omp parallel for
   for (int p = 0; p < 2; ++p) {
-    out.expl[1 - p] += treeplex[p]->br(gradients[p], out.best_response[p]);
+    out.expl[1 - p] += treeplex[p]->br(gradients[p], out.best_response[p], T::move_count);
   }
 
   INFO("... all done. (ev0 = %.6f, expl = %.6f, %.6f)", ev0, out.expl[0],
@@ -516,7 +516,7 @@ template <typename T>
 Averager Traverser<T>::new_averager(const uint8_t player,
                                     const AveragingStrategy avg) {
   CHECK(player == 0 || player == 1, "Invalid player %d", player);
-  return Averager(treeplex[player], avg);
+  return Averager(treeplex[player], avg, T::move_count);
 }
 
 template <typename T>
@@ -526,7 +526,7 @@ void Traverser<T>::compute_sf_strategies_(
   for (int p = 0; p < 2; ++p) {
     std::copy(strategies[p].begin(), strategies[p].end(),
               std::begin(sf_strategies_[p]));
-    treeplex[p]->bh_to_sf(sf_strategies_[p]);
+    treeplex[p]->bh_to_sf(sf_strategies_[p], T::move_count);
   }
 }
 

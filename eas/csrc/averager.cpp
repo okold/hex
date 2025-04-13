@@ -32,9 +32,11 @@ inline Real iter_weight(const AveragingStrategy avg, const uint32_t iteration) {
 } // namespace
 
 Averager::Averager(std::shared_ptr<Treeplex> treeplex,
-                   const AveragingStrategy avg)
-    : treeplex_(treeplex), avg_(avg), sf_(0.0, treeplex->num_infosets() * 9),
-      buf_(0.0, treeplex->num_infosets() * 9) {}
+                   const AveragingStrategy avg,
+                   const uint32_t move_count)
+    : treeplex_(treeplex), avg_(avg), sf_(0.0, treeplex->num_infosets() * move_count),
+      buf_(0.0, treeplex->num_infosets() * move_count),
+      move_count(move_count) {}
 
 void Averager::push(ConstRealBuf strategy, const std::optional<Real> weight) {
   if (avg_ == CUSTOM) {
@@ -47,7 +49,7 @@ void Averager::push(ConstRealBuf strategy, const std::optional<Real> weight) {
   }
 
   CHECK(strategy.size() == sf_.size(), "Strategy size mismatch");
-  CHECK(treeplex_->is_valid_strategy(strategy), "Invalid strategy");
+  CHECK(treeplex_->is_valid_strategy(strategy, move_count), "Invalid strategy");
 
   ++num_;
   Real alpha = 0.;
@@ -62,7 +64,7 @@ void Averager::push(ConstRealBuf strategy, const std::optional<Real> weight) {
   INFO("Pushing strategy with alpha %f", alpha);
   buf_.resize(strategy.size());
   std::copy(strategy.begin(), strategy.end(), std::begin(buf_));
-  treeplex_->bh_to_sf(buf_);
+  treeplex_->bh_to_sf(buf_, move_count);
   buf_ *= alpha;
   sf_ *= 1.0 - alpha;
   sf_ += buf_;
@@ -73,8 +75,8 @@ std::valarray<Real> Averager::running_avg() const {
   if (avg_ == CUSTOM)
     CHECK(weight_sum_ > 0., "Weight sum is 0");
   std::valarray<Real> out = sf_;
-  treeplex_->sf_to_bh(out);
-  assert(treeplex_->is_valid_strategy(out));
+  treeplex_->sf_to_bh(out, move_count);
+  assert(treeplex_->is_valid_strategy(out, move_count));
   return out;
 }
 
