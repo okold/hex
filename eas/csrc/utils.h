@@ -34,9 +34,9 @@ auto prod(const T &x) {
   return prod(std::span<const std::ranges::range_value_t<T>>(x));
 }
 
-inline bool is_valid(uint32_t mask, uint32_t action) {
+inline bool is_valid(uint32_t mask, uint32_t action, const uint32_t move_count=9) {
 #ifdef DEBUG
-  CHECK(action < 9, "Invalid action %d", action);
+  CHECK(action < move_count, "Invalid action %d", action);
 #endif
   return mask & (1 << action);
 }
@@ -55,17 +55,17 @@ auto sum(const T &x) {
   return sum(std::span<const std::ranges::range_value_t<T>>(x));
 }
 
-inline void relu_normalize(RealBuf buf, const uint32_t mask) {
+inline void relu_normalize(RealBuf buf, const uint32_t mask, const uint32_t move_count) {
   Real s = 0;
   for (uint32_t i = 0; i < buf.size(); ++i) {
-    auto const x = std::max<Real>(buf[i], 0) * is_valid(mask, i);
+    auto const x = std::max<Real>(buf[i], 0) * is_valid(mask, i, move_count);
     s += x;
     buf[i] = x;
   }
   if (s < SMALL) {
     s = 0;
     for (uint32_t i = 0; i < buf.size(); ++i) {
-      buf[i] = is_valid(mask, i);
+      buf[i] = is_valid(mask, i, move_count);
       s += buf[i];
     }
   }

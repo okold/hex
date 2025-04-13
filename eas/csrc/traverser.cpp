@@ -411,14 +411,14 @@ void Traverser<T>::compute_gradients(const PerPlayer<ConstRealBuf> strategies) {
     PerPlayer<uint32_t> parent_seqs = {0, 0};
     T s{};
 
-    if (!is_valid(s.available_actions(), i % T::move_count))
+    if (!is_valid(s.available_actions(), i % T::move_count, T::move_count))
       continue;
     assert(s.player() == 0);
     parent_seqs[0] =
         treeplex[0]->infosets.at(s.get_infoset()).infoset_id * T::move_count + (i % T::move_count);
     s.next(i % T::move_count); // pl1's move
 
-    if (!is_valid(s.available_actions(), i / T::move_count))
+    if (!is_valid(s.available_actions(), i / T::move_count, T::move_count))
       continue;
     assert(s.player() == 1);
     parent_seqs[1] =
