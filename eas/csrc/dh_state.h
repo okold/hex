@@ -93,31 +93,73 @@ struct DhState : public BaseState<abrupt, 3> {
   static constexpr uint32_t OPENSPIEL_INFOSTATE_SIZE =
       num_cells * cell_states + longest_sequence * bits_per_action;
 
+  uint8_t winner_recursive(uint8_t pos, uint8_t board_size, uint8_t mode, uint8_t visited[], const uint8_t end_state[]) const {
+    const auto &x = this->x;
+    uint8_t positions[6] = {pos - board_size,     // top
+                            pos - board_size + 1, // top-right
+                            pos - 1,              // left
+                            pos + 1,              // right
+                            pos + board_size - 1, // bottom-left
+                            pos + board_size};    // bottom
+
+    visited[pos] = 1;
+
+    if (end_state[pos]) {
+      return 1;
+    }
+
+    for (int i = 0; i < 6; i++) {
+      if (positions[i] >= 0 &&                // position isn't out of bounds
+          positions[i] < sizeof(x[mode]) &&   // position isn't out of bounds
+          !visited[positions[i]] &&           // position hasn't been visited
+          x[mode][positions[i]]) {            // position has a token
+        return winner_recursive(positions[i], board_size, mode, visited, end_state);
+      }
+    }
+
+    return 0; // no end reached
+  }
+
   uint8_t winner() const {
     const auto &x = this->x;
-    uint8_t a, b, c;
+    uint8_t board_size = 3;     // EDIT THIS
+    uint8_t n = board_size * board_size;
+    
 
-    a = x[0][3] & (x[0][0] | x[0][1]);
-    b = x[0][4] & (x[0][1] | x[0][2]);
-    c = x[0][5] & x[0][2];
-    b |= (x[0][4] & (a | c));
-    a |= x[0][3] & b;
-    c |= x[0][5] & b;
-    a = x[0][6] & (a | b);
-    b = x[0][7] & (b | c);
-    c = x[0][8] & c;
-    if ((a | b | c) & 1) return 0;
+    static const uint8_t END_STATES_B_3[] = {0, 0, 0, 0, 0, 0, 1, 1, 1};
+    static const uint8_t END_STATES_R_3[] = {0, 0, 1, 0, 0, 1, 0, 0, 1};
+    static const uint8_t END_STATES_B_4[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1};
+    static const uint8_t END_STATES_R_4[] = {0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1};
 
-    a = x[1][1] & (x[1][0] | x[1][3]);
-    b = x[1][4] & (x[1][3] | x[1][6]);
-    c = x[1][7] & x[1][6];
-    b |= (x[1][4] & (a | c));
-    a |= x[1][1] & b;
-    c |= x[1][7] & b;
-    a = x[1][2] & (a | b);
-    b = x[1][5] & (b | c);
-    c = x[1][8] & c;
-    if ((a | b | c) & 1) return 1;
+    const uint8_t* end_states_b;
+    const uint8_t* end_states_r;
+    
+    if (board_size == 3) {
+      end_states_b = END_STATES_B_3;
+      end_states_r = END_STATES_R_3;
+    }
+    else if (board_size == 4) {
+      end_states_b = END_STATES_B_4;
+      end_states_r = END_STATES_R_4;
+    }
+
+    for (int i = 0; i < board_size; i++) {
+      if (x[0][i]) {
+        uint8_t visited[n] = {};
+        if (winner_recursive(i, board_size, 0, visited, end_states_b)) {
+          return 0;
+        }
+      }
+    }
+
+    for (int i = 0; i < board_size; i++) {
+      if (x[0][i * board_size]) {
+        uint8_t visited[n] = {};
+        if (winner_recursive(i * board_size, board_size, 1, visited, end_states_r)) {
+          return 1;
+        }
+      }
+    }
 
     return 0xff;  // No winner
   }
