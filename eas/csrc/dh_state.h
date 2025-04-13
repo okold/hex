@@ -95,7 +95,7 @@ struct DhState : public BaseState<abrupt, 3> {
 
   uint8_t winner_recursive(uint8_t pos, uint8_t board_size, uint8_t mode, uint8_t visited[], const uint8_t end_state[]) const {
     const auto &x = this->x;
-    uint8_t positions[6] = {pos - board_size,     // top
+    int32_t positions[6] =  {pos - board_size,     // top
                             pos - board_size + 1, // top-right
                             pos - 1,              // left
                             pos + 1,              // right
@@ -153,7 +153,7 @@ struct DhState : public BaseState<abrupt, 3> {
     }
 
     for (int i = 0; i < board_size; i++) {
-      if (x[0][i * board_size]) {
+      if (x[1][i * board_size]) {
         uint8_t visited[n] = {};
         if (winner_recursive(i * board_size, board_size, 1, visited, end_states_r)) {
           return 1;
