@@ -62,7 +62,7 @@ inline std::string dh_xvec_str(const uint8_t *x, const char c) {
 }
 
 template <bool abrupt>
-struct DhState : public BaseState<abrupt, 3> {
+struct DhState : public BaseState<abrupt, 4> {
   static constexpr uint32_t num_cells = 9;
   // new openspiel uses these :upsidedown:
   static constexpr uint32_t bits_per_action = num_cells;
@@ -122,7 +122,7 @@ struct DhState : public BaseState<abrupt, 3> {
 
   uint8_t winner() const {
     const auto &x = this->x;
-    uint8_t board_size = 3;     // EDIT THIS
+    uint8_t board_size = 4;     // EDIT THIS
     uint8_t n = board_size * board_size;
     
 
