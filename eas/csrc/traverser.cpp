@@ -244,7 +244,7 @@ void Treeplex::regret_to_bh(RealBuf buf, uint32_t move_count) const {
   for (const auto &it : infosets) {
     const uint32_t i = it.second.infoset_id;
     const uint32_t a = it.second.legal_actions;
-    relu_normalize(buf.subspan(i * move_count, move_count), a);
+    relu_normalize(buf.subspan(i * move_count), a, move_count);
   }
 
   assert(is_valid_strategy(buf, move_count));

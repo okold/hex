@@ -93,7 +93,7 @@ template <typename T> Real CfrSolver<T>::update_prediction_(int p) {
             regrets_[p][i * 9 + j] + gradient_copy_[i * 9 + j] - ev;
       }
     }
-    relu_normalize(std::span(bh_[p]).subspan(i * 9, 9), mask);
+    relu_normalize(std::span(bh_[p]).subspan(i * 9, 9), mask, T::move_count);
 
     ev = dot(std::span(gradient_copy_).subspan(i * 9, 9),
              std::span(bh_[p]).subspan(i * 9, 9));
