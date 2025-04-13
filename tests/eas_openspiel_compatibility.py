@@ -24,11 +24,11 @@ GAMES = {
         eas.AbruptPtttState
     ),
     'Classical 3x3 Dark Hex': (
-        pyspiel.load_game('dark_hex(board_size=4,gameversion=cdh,obstype=reveal-nothing)'),
+        pyspiel.load_game('dark_hex(board_size=3,gameversion=cdh,obstype=reveal-nothing)'),
         eas.DhState
     ),
     'Abrupt 3x3 Dark Hex': (
-        pyspiel.load_game('dark_hex(board_size=4,gameversion=adh,obstype=reveal-nothing)'),
+        pyspiel.load_game('dark_hex(board_size=3,gameversion=adh,obstype=reveal-nothing)'),
         eas.AbruptDhState
     ),
 }

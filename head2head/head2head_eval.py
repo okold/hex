@@ -155,8 +155,8 @@ def main(args):
     game_to_osgame = {
         'classical_phantom_ttt': 'phantom_ttt(obstype=reveal-nothing)',
         'abrupt_phantom_ttt': 'phantom_ttt(obstype=reveal-nothing,gameversion=abrupt)',
-        'classical_dark_hex': 'dark_hex(gameversion=cdh,board_size=4,obstype=reveal-nothing)',
-        'abrupt_dark_hex': 'dark_hex(gameversion=adh,board_size=4,obstype=reveal-nothing)',
+        'classical_dark_hex': 'dark_hex(gameversion=cdh,board_size=3,obstype=reveal-nothing)',
+        'abrupt_dark_hex': 'dark_hex(gameversion=adh,board_size=3,obstype=reveal-nothing)',
         'kuhn_poker': 'kuhn_poker(players=2)',
         'leduc_poker': 'leduc_poker(players=2)',
     }
