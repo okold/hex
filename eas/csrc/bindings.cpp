@@ -84,8 +84,8 @@ void register_types(py::module &m, const std::string &prefix) {
       .def(
           "next",
           [](T &s, const uint8_t cell) -> void {
-            CHECK(cell < 9, "Invalid cell (must be in range [0..8]; found %d)",
-                  cell);
+            CHECK(cell < T::move_count, "Invalid cell (must be in range [0..%d]; found %d)",
+                  T::move_count, cell);
             CHECK(!s.is_terminal(), "Game is over");
             const uint32_t a = s.available_actions();
             CHECK(a & (1 << cell), "The action is not legal");
@@ -144,16 +144,16 @@ void register_types(py::module &m, const std::string &prefix) {
             // clang-format off
             CHECK(strat0.ndim() == 2 &&
                       strat0.shape(0) == traverser.treeplex[0]->num_infosets() &&
-                      strat0.shape(1) == 9,
-                  "Invalid shape for Player 1's strategy. Must be (%d, 9); found (%lu, %lu)", 
-                  traverser.treeplex[0]->num_infosets(), strat0.shape(0),
-                  strat0.shape(1));
+                      strat0.shape(1) == T::move_count,
+                  "Invalid shape for Player 1's strategy. Must be (%d, %d); found (%lu, %lu)",
+                  traverser.treeplex[0]->num_infosets(), T::move_count, 
+                  strat0.shape(0), strat0.shape(1));
             CHECK(strat1.ndim() == 2 &&
                       strat1.shape(0) == traverser.treeplex[1]->num_infosets() &&
-                      strat1.shape(1) == 9,
-                  "Invalid shape for Player 2's strategy. Must be (%d, 9); (%lu, %lu)",
-                  traverser.treeplex[1]->num_infosets(), strat1.shape(0),
-                  strat1.shape(1));
+                      strat1.shape(1) == T::move_count,
+                  "Invalid shape for Player 2's strategy. Must be (%d, %d); (%lu, %lu)",
+                  traverser.treeplex[1]->num_infosets(), T::move_count, 
+                  strat1.shape(0), strat1.shape(1));
             // clang-format on
 
             return traverser.ev_and_exploitability(
@@ -183,12 +183,12 @@ void register_types(py::module &m, const std::string &prefix) {
             for (size_t i = 0; i < infoset_desc.size() / 2; ++i) {
               const char cell = infoset_desc[2 * i];
               const char outcome = infoset_desc[2 * i + 1];
-              CHECK(cell >= '0' && cell <= '9',
+              CHECK(cell >= '0' && cell <= '9',   // I am ignoring this for now because there will be 16 which is 2 digits
                     "Invalid cell in infoset desc `%s`", infoset_desc.c_str());
               CHECK(outcome == '*' || outcome == '.',
                     "Invalid outcome in infoset desc `%s`",
                     infoset_desc.c_str());
-              infoset_key <<= 5;
+              infoset_key <<= 5; // same with this thing here
               infoset_key += 2 * ((cell - '0') + 1);
               infoset_key += (outcome == '*');
             }
