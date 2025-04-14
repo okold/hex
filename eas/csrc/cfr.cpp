@@ -15,8 +15,8 @@ CfrSolver<T>::CfrSolver(std::shared_ptr<Traverser<T>> traverser,
       averagers_{traverser_->new_averager(0, conf.avg),
                  traverser_->new_averager(1, conf.avg)},
       regrets_{
-          std::valarray<Real>(0., traverser_->treeplex[0]->num_infosets() * 9),
-          std::valarray<Real>(0., traverser_->treeplex[1]->num_infosets() * 9)},
+          std::valarray<Real>(0., traverser_->treeplex[0]->num_infosets() * T::move_count),
+          std::valarray<Real>(0., traverser_->treeplex[1]->num_infosets() * T::move_count)},
       bh_{regrets_} {
   conf_.validate();
 
@@ -84,24 +84,24 @@ template <typename T> Real CfrSolver<T>::update_prediction_(int p) {
     const boost::multiprecision::cpp_int info = traverser_->treeplex[p]->infoset_keys[i];
     const uint32_t mask = traverser_->treeplex[p]->legal_actions[i];
 
-    ev = dot(std::span(gradient_copy_).subspan(i * 9, 9),
-             std::span(bh_[p]).subspan(i * 9, 9));
+    ev = dot(std::span(gradient_copy_).subspan(i * T::move_count, T::move_count),
+             std::span(bh_[p]).subspan(i * T::move_count, T::move_count));
 
-    for (uint32_t j = 0; j < 9; ++j) {
+    for (uint32_t j = 0; j < T::move_count; ++j) {
       if (is_valid(mask, j)) {
-        bh_[p][i * 9 + j] =
-            regrets_[p][i * 9 + j] + gradient_copy_[i * 9 + j] - ev;
+        bh_[p][i * T::move_count + j] =
+            regrets_[p][i * T::move_count + j] + gradient_copy_[i * T::move_count + j] - ev;
       }
     }
-    relu_normalize(std::span(bh_[p]).subspan(i * 9, 9), mask, T::move_count);
+    relu_normalize(std::span(bh_[p]).subspan(i * T::move_count, T::move_count), mask, T::move_count);
 
-    ev = dot(std::span(gradient_copy_).subspan(i * 9, 9),
-             std::span(bh_[p]).subspan(i * 9, 9));
+    ev = dot(std::span(gradient_copy_).subspan(i * T::move_count, T::move_count),
+             std::span(bh_[p]).subspan(i * T::move_count, T::move_count));
 
     if (i) {
       const uint32_t parent = traverser_->treeplex[p]->parent_index[i];
       const uint32_t parent_a = parent_action(info);
-      gradient_copy_[parent * 9 + parent_a] += ev;
+      gradient_copy_[parent * T::move_count + parent_a] += ev;
     }
   }
 
@@ -121,18 +121,18 @@ template <typename T> Real CfrSolver<T>::update_regrets_(int p) {
     const boost::multiprecision::cpp_int info = traverser_->treeplex[p]->infoset_keys[i];
     const uint32_t mask = traverser_->treeplex[p]->legal_actions[i];
 
-    ev = dot(std::span(traverser_->gradients[p]).subspan(i * 9, 9),
-             std::span(bh_[p]).subspan(i * 9, 9));
-    for (uint32_t j = 0; j < 9; ++j) {
+    ev = dot(std::span(traverser_->gradients[p]).subspan(i * T::move_count, T::move_count),
+             std::span(bh_[p]).subspan(i * T::move_count, T::move_count));
+    for (uint32_t j = 0; j < T::move_count; ++j) {
       if (is_valid(mask, j)) {
-        regrets_[p][i * 9 + j] += traverser_->gradients[p][i * 9 + j] - ev;
+        regrets_[p][i * T::move_count + j] += traverser_->gradients[p][i * T::move_count + j] - ev;
       }
     }
 
     if (i) {
       const uint32_t parent = traverser_->treeplex[p]->parent_index[i];
       const uint32_t parent_a = parent_action(info);
-      traverser_->gradients[p][parent * 9 + parent_a] += ev;
+      traverser_->gradients[p][parent * T::move_count + parent_a] += ev;
     }
   }
 
