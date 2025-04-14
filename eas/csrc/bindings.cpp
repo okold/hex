@@ -398,4 +398,8 @@ PYBIND11_MODULE(pyeas, m) {
   register_types<CornerDhState>(m, "CornerDh");
   register_types<PtttState<false>>(m, "Pttt");
   register_types<PtttState<true>>(m, "AbruptPttt");
+
+  // added
+  register_types<DhState<false, 4>>(m, "Dh4");
+  register_types<DhState<true, 4>>(m, "AbruptDh4");
 }

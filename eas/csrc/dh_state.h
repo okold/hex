@@ -61,9 +61,9 @@ inline std::string dh_xvec_str(const uint8_t *x, const char c) {
   return repr;
 }
 
-template <bool abrupt>
-struct DhState : public BaseState<abrupt, 3> {
-  static constexpr uint32_t num_cells = 9;
+template <bool abrupt, uint32_t board_s = 3>
+struct DhState : public BaseState<abrupt, board_s> {
+  static constexpr uint32_t num_cells = BaseState<abrupt, board_s>::move_count;
   // new openspiel uses these :upsidedown:
   static constexpr uint32_t bits_per_action = num_cells;
   static constexpr uint32_t longest_sequence = num_cells;
@@ -131,14 +131,21 @@ struct DhState : public BaseState<abrupt, 3> {
     if (end_state[pos]) {
       return 1;
     }
+    const int8_t (*adj)[6];
+    if (board_size == 3) {
+      adj = ADJACENCY_MATRIX_3;
+    }
+    else if (board_size == 4) {
+      adj = ADJACENCY_MATRIX_4;
+    }
 
     for (int i = 0; i < 6; i++) {
-      if (ADJACENCY_MATRIX_3[pos][i] == -1) {
+      if (adj[pos][i] == -1) {
         break;
       }
-      else if (!visited[ADJACENCY_MATRIX_3[pos][i]] &&      // position not visited yet
-                x[mode][ADJACENCY_MATRIX_3[pos][i]] & 1) {  // position has a token
-        if (winner_recursive(ADJACENCY_MATRIX_3[pos][i], board_size, mode, visited, end_state)) {
+      else if (!visited[adj[pos][i]] &&      // position not visited yet
+                x[mode][adj[pos][i]] & 1) {  // position has a token
+        if (winner_recursive(adj[pos][i], board_size, mode, visited, end_state)) {
           return 1;
         }
       }
@@ -149,7 +156,7 @@ struct DhState : public BaseState<abrupt, 3> {
   
   uint8_t winner() const {
     const auto &x = this->x;
-    uint8_t board_size = 3;     // EDIT THIS
+    uint8_t board_size = this->b_s;     // EDIT THIS
     uint8_t n = board_size * board_size;
     
 
@@ -214,27 +221,30 @@ struct DhState : public BaseState<abrupt, 3> {
   static void compute_openspiel_infostate(uint8_t player, boost::multiprecision::cpp_int info,
                                           std::span<bool> buf) {
     std::fill(buf.begin(), buf.end(), false);
-    PerPlayer<std::bitset<9>> b{};
+    PerPlayer<std::bitset<num_cells>> b{};
     int n_actions = 0, m_actions = 0;
-    for (boost::multiprecision::cpp_int i = info; i; i >>= 5, ++n_actions) {
+    uint32_t mask = (1 << (move_size(num_cells)-1)) - 1; //0b1111 for 3x3
+
+    for (boost::multiprecision::cpp_int i = info; i; i >>= move_size(num_cells), ++n_actions) {
       bool success = i & 1 ? true : false;
-      uint8_t cell = (((i >> 1) & 0b1111) - 1).convert_to<uint8_t>();
+      
+      uint8_t cell = (((i >> 1) & mask) - 1).convert_to<uint8_t>();
       uint8_t p = success ? player : 1 - player;
       b[p][cell] = true;
     }
 
-    for (boost::multiprecision::cpp_int i = info; i; i >>= 5, ++m_actions){
-      uint8_t cell = (((i >> 1) & 0b1111) - 1).convert_to<uint8_t>();
+    for (boost::multiprecision::cpp_int i = info; i; i >>= move_size(num_cells), ++m_actions){
+      uint8_t cell = (((i >> 1) & mask) - 1).convert_to<uint8_t>();
       buf[num_cells * cell_states + (n_actions - 1 - m_actions) * bits_per_action + cell] = true;
     }
 
-    for (auto i = 0; i < 9; ++i) {
+    for (auto i = 0; i < num_cells; ++i) {
       buf[i * cell_states + kEmpty - min_cell_state] = !(b[0][i] || b[1][i]);
     }
 
     {
       // west is 0 3 6
-      std::bitset<9> west, east;
+      std::bitset<num_cells> west, east;
       // west[0] = b[1][0];
       // west[3] = b[1][3];
       // west[6] = b[1][6];
@@ -257,7 +267,7 @@ struct DhState : public BaseState<abrupt, 3> {
 
       auto white = b[1] & ~(east | west);
 
-      for (auto i = 0; i < 9; ++i) {
+      for (auto i = 0; i < num_cells; ++i) {
         buf[i * cell_states + kWhite - min_cell_state] = white[i];
         buf[i * cell_states + kWhiteEast - min_cell_state] = east[i];
         buf[i * cell_states + kWhiteWest - min_cell_state] = west[i];
@@ -265,7 +275,7 @@ struct DhState : public BaseState<abrupt, 3> {
     }
 
     {
-      std::bitset<9> north, south;
+      std::bitset<num_cells> north, south;
       // north[0] = b[0][0];
       // north[1] = b[0][1];
       // north[2] = b[0][2];
@@ -288,7 +298,7 @@ struct DhState : public BaseState<abrupt, 3> {
 
       auto black = b[0] & ~(north | south);
 
-      for (auto i = 0; i < 9; ++i) {
+      for (auto i = 0; i < num_cells; ++i) {
         buf[i * cell_states + kBlack - min_cell_state] = black[i];
         buf[i * cell_states + kBlackNorth - min_cell_state] = north[i];
         buf[i * cell_states + kBlackSouth - min_cell_state] = south[i];
@@ -296,9 +306,9 @@ struct DhState : public BaseState<abrupt, 3> {
     }
 
     // #ifdef DEBUG
-    for (int i = 0; i < 9; ++i) {
+    for (int i = 0; i < num_cells; ++i) {
       int s = 0;
-      for (int j = 0; j < 9; ++j) {
+      for (int j = 0; j < num_cells; ++j) {
         s += buf[i * cell_states + j];
       }
       assert(s == 1);

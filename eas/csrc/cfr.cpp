@@ -148,3 +148,6 @@ template class CfrSolver<DhState<true>>;
 template class CfrSolver<CornerDhState>;
 template class CfrSolver<PtttState<false>>;
 template class CfrSolver<PtttState<true>>;
+
+template class CfrSolver<DhState<true, 4>>;
+template class CfrSolver<DhState<false, 4>>;

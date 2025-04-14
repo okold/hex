@@ -15,14 +15,14 @@ def to_bool(x):
 
 # games to test (compare openspiel implementation with eas implementation)
 GAMES = {
-    'Classical Phantom Tic-Tac-Toe': (
-        pyspiel.load_game('phantom_ttt'),
-        eas.PtttState
-    ),
-    'Abrupt Phantom Tic-Tac-Toe': (
-        None, # openspiel doesn't have an abrupt pttt implementation afaik
-        eas.AbruptPtttState
-    ),
+    # 'Classical Phantom Tic-Tac-Toe': (
+    #     pyspiel.load_game('phantom_ttt'),
+    #     eas.PtttState
+    # ),
+    # 'Abrupt Phantom Tic-Tac-Toe': (
+    #     None, # openspiel doesn't have an abrupt pttt implementation afaik
+    #     eas.AbruptPtttState
+    # ),
     'Classical 3x3 Dark Hex': (
         pyspiel.load_game('dark_hex(board_size=3,gameversion=cdh)'),
         eas.DhState
@@ -31,14 +31,14 @@ GAMES = {
         pyspiel.load_game('dark_hex(board_size=3,gameversion=adh)'),
         eas.AbruptDhState
     ),
-    # 'Classical 4x4 Dark Hex': (
-    #     pyspiel.load_game('dark_hex(board_size=3,gameversion=cdh)'),
-    #     eas.DhState
-    # ),
-    # 'Abrupt 4x4 Dark Hex': (
-    #     pyspiel.load_game('dark_hex(board_size=3,gameversion=adh)'),
-    #     eas.AbruptDhState
-    # ),
+    'Classical 4x4 Dark Hex': (
+        pyspiel.load_game('dark_hex(board_size=4,gameversion=cdh)'),
+        eas.Dh4State
+    ),
+    'Abrupt 4x4 Dark Hex': (
+        pyspiel.load_game('dark_hex(board_size=4,gameversion=adh)'),
+        eas.AbruptDh4State
+    ),
 }
 
 # number of random runs for each game

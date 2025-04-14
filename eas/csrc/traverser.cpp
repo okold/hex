@@ -536,3 +536,6 @@ template struct Traverser<DhState<true>>;
 template struct Traverser<CornerDhState>;
 template struct Traverser<PtttState<false>>;
 template struct Traverser<PtttState<true>>;
+
+template struct Traverser<DhState<true, 4>>;
+template struct Traverser<DhState<false, 4>>;
