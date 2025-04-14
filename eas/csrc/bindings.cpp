@@ -34,9 +34,9 @@ template <typename T = RealBuf> T to_mut_span(NdArray &arr) {
   return T(arr.mutable_data(), arr.size());
 }
 
-std::array<py::ssize_t, 2> mat_shape(ConstRealBuf buf) {
-  CHECK(buf.size() % 9 == 0, "Buffer size must be a multiple of 9");
-  return {(py::ssize_t)buf.size() / 9, 9};
+std::array<py::ssize_t, 2> mat_shape(ConstRealBuf buf, const uint32_t move_count) {
+  CHECK(buf.size() % move_count == 0, "Buffer size must be a multiple of the move count");
+  return {(py::ssize_t)buf.size() / move_count, move_count};
 }
 
 namespace {
@@ -49,7 +49,7 @@ auto to_ndarray(std::array<py::ssize_t, N> shape, ConstRealBuf buf) {
         buf.size(), prod(shape));
   return NdArray(shape, buf.data());
 }
-auto to_ndarray(ConstRealBuf buf) { return to_ndarray(mat_shape(buf), buf); }
+auto to_ndarray(ConstRealBuf buf, uint32_t move_count) { return to_ndarray(mat_shape(buf, move_count), buf); }
 } // namespace
 
 struct EvExplPy {
@@ -57,13 +57,14 @@ struct EvExplPy {
   std::tuple<NdArray, NdArray> gradient;
   std::tuple<Real, Real> expl;
   std::tuple<NdArray, NdArray> best_response;
+  const uint32_t move_count=9;
 
   // NB: allows implicit conversion
-  EvExplPy(EvExpl ev) : ev0(ev.ev0), expl{ev.expl[0], ev.expl[1]} {
-    std::get<0>(gradient) = to_ndarray(ev.gradient[0]);
-    std::get<0>(best_response) = to_ndarray(ev.best_response[0]);
-    std::get<1>(gradient) = to_ndarray(ev.gradient[1]);
-    std::get<1>(best_response) = to_ndarray(ev.best_response[1]);
+  EvExplPy(EvExpl ev) : ev0(ev.ev0), expl{ev.expl[0], ev.expl[1]}, move_count(ev.move_count) {
+    std::get<0>(gradient) = to_ndarray(ev.gradient[0], move_count);
+    std::get<0>(best_response) = to_ndarray(ev.best_response[0], move_count);
+    std::get<1>(gradient) = to_ndarray(ev.gradient[1], move_count);
+    std::get<1>(best_response) = to_ndarray(ev.best_response[1], move_count);
   }
 };
 
@@ -206,7 +207,7 @@ void register_types(py::module &m, const std::string &prefix) {
                const uint32_t rows = traverser.treeplex[p]->num_infosets();
                std::valarray<Real> strategy(0.0, rows * T::move_count);
                traverser.treeplex[p]->set_uniform(strategy, T::move_count);
-               out[p] = to_ndarray(strategy);
+               out[p] = to_ndarray(strategy, T::move_count);
              }
 
              return std::make_tuple(out[0], out[1]);
@@ -282,8 +283,8 @@ void register_types(py::module &m, const std::string &prefix) {
       .def("step", &CfrSolver<T>::step)
       .def("avg_bh",
            [](const CfrSolver<T> &solver) -> std::tuple<NdArray, NdArray> {
-             return std::make_tuple(to_ndarray(solver.get_avg_bh(0)),
-                                    to_ndarray(solver.get_avg_bh(1)));
+             return std::make_tuple(to_ndarray(solver.get_avg_bh(0), T::move_count),
+                                    to_ndarray(solver.get_avg_bh(1), T::move_count));
            });
 
   m.def(
@@ -318,7 +319,7 @@ PYBIND11_MODULE(pyeas, m) {
           },
           py::arg("strategy"), py::arg("weight") = std::nullopt)
       .def("running_avg",
-           [](const Averager &a) { return to_ndarray(a.running_avg()); })
+           [](const Averager &a) { return to_ndarray(a.running_avg(), a.move_count); })
       .def("clear", &Averager::clear);
 
   py::enum_<AveragingStrategy>(m, "AveragingStrategy")

@@ -463,6 +463,7 @@ EvExpl
 Traverser<T>::ev_and_exploitability(const PerPlayer<ConstRealBuf> strategies) {
   EvExpl out;
   const T temp{};
+  out.move_count = T::move_count;
 
   INFO("begin exploitability computation...");
   compute_gradients(strategies);

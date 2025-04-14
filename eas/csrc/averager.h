@@ -31,13 +31,13 @@ public:
             const std::optional<Real> weight = std::nullopt);
   std::valarray<Real> running_avg() const;
   void clear();
+  uint32_t move_count;
 
 private:
   std::shared_ptr<Treeplex> treeplex_;
   AveragingStrategy avg_;
   Real weight_sum_ = 0.;
   size_t num_ = 0;
-  uint32_t move_count;
 
   std::valarray<Real> sf_;
   std::valarray<Real> buf_;

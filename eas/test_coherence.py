@@ -99,3 +99,6 @@ for game_str, (os_game, eas_state_fn) in GAMES.items():
             if f'{e}' == "legal_actions":
                 print(f'{oh_legal_actions=}')
                 print(f'{eas_legal_actions=}')
+            if f'{e}' == "terminal":
+                print(os_terminal, eas_terminal)
+                print(f"winner: {eas_state.winner()}")

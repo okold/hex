@@ -49,6 +49,7 @@ struct EvExpl {
   PerPlayer<Real> expl;
   // best_response[0] is the best response to player 1's strategy
   PerPlayer<std::valarray<Real>> best_response;
+  uint32_t move_count;
 };
 
 template <typename T> struct Traverser {
