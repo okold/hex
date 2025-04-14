@@ -20,7 +20,7 @@ using std::size_t;
 namespace {
 template <typename T> // T must extend base_state
 unsigned long discover_infosets_thread(T root, PerPlayer<InfosetMap> *infosets) {
-  T stack[100];
+  T stack[300]; // T::move_count*T::move_count
   stack[0] = root;
   size_t stack_len = 1;
   unsigned long count = 0;
@@ -46,7 +46,7 @@ unsigned long discover_infosets_thread(T root, PerPlayer<InfosetMap> *infosets) 
           T ss = s;
           ss.next(i);
           stack[stack_len++] = ss;
-          assert(stack_len < 100);
+          assert(stack_len < 300);
         }
       }
     }
@@ -63,7 +63,7 @@ void compute_gradients_thread(
   std::tuple<T,                  // Current state
              PerPlayer<uint32_t> // Parent seqs
              >
-      stack[100];
+      stack[300];
   stack[0] = {root, init_parent_seqs};
   size_t stack_len = 1;
 
@@ -276,23 +276,23 @@ template <typename T> Traverser<T>::Traverser() {
   for (int i = 0; i < T::move_count * T::move_count; ++i) {
     T s{};
     {
-      const uint8_t a = i % T::move_count;
-      assert(treeplex[0]->infosets.count(s.get_infoset()));
-      if (!is_valid(s.available_actions(), a))
+      const uint8_t a = i % T::move_count;  INFO("reached1");
+      assert(treeplex[0]->infosets.count(s.get_infoset())); INFO("reached2");
+      if (!is_valid(s.available_actions(), a, T::move_count))
         continue;
       s.next(a);
     }
     {
       const uint8_t a = i / T::move_count;
-      assert(s.player() == 1 && treeplex[1]->infosets.count(s.get_infoset()));
-      if (!is_valid(s.available_actions(), a))
+      assert(s.player() == 1 && treeplex[1]->infosets.count(s.get_infoset())); INFO("reached3");
+      if (!is_valid(s.available_actions(), a, T::move_count))
         continue;
-      s.next(a);
+      s.next(a); INFO("reached4");
     }
 
-    PerPlayer<InfosetMap> thread_infosets;
+    PerPlayer<InfosetMap> thread_infosets; INFO("reached5");
     const unsigned long thread_count =
-        ::discover_infosets_thread(s, &thread_infosets);
+        ::discover_infosets_thread(s, &thread_infosets); INFO("reached6");
     count += thread_count;
 
     INFO("  > thread %02d found %.2fM infosets (%.2fB nodes)", i,
