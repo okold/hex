@@ -4,7 +4,8 @@ import numpy
 import pybind11_stubgen.typing_ext
 import typing
 __all__ = ['AbruptDhCfrSolver', 'AbruptDhState', 'AbruptDhTraverser', 'AbruptPtttCfrSolver', 'AbruptPtttState', 'AbruptPtttTraverser', 'Averager', 'AveragingStrategy', 'CfrConf', 'CfrSolver', 'CornerDhCfrSolver', 'CornerDhState', 'CornerDhTraverser', 'DhCfrSolver', 'DhState', 'DhTraverser', 'EvExpl', 'PtttCfrSolver', 'PtttState', 'PtttTraverser',
-            'AbruptDh4CfrSolver', 'AbruptDh4State', 'AbruptDh4Traverser']
+            'AbruptDh4CfrSolver', 'AbruptDh4State', 'AbruptDh4Traverser',
+            'Dh4CfrSolver', 'Dh4State', 'Dh4Traverser']
 class AbruptDhCfrSolver:
     def __init__(self, traverser: AbruptDhTraverser, cfr_conf: CfrConf) -> None:
         ...

@@ -19,9 +19,16 @@ from eas.pyeas import EvExpl
 from eas.pyeas import PtttCfrSolver
 from eas.pyeas import PtttState
 from eas.pyeas import PtttTraverser
+
+
 from eas.pyeas import AbruptDh4CfrSolver
 from eas.pyeas import AbruptDh4State
 from eas.pyeas import AbruptDh4Traverser
+from eas.pyeas import Dh4CfrSolver
+from eas.pyeas import Dh4State
+from eas.pyeas import Dh4Traverser
+
+
 from . import pyeas
 __all__ = ['AbruptDhCfrSolver', 'AbruptDhState', 'AbruptDhTraverser', 'AbruptPtttCfrSolver', 'AbruptPtttState', 'AbruptPtttTraverser', 'Averager', 'AveragingStrategy', 'CfrConf', 'CfrSolver', 'CornerDhCfrSolver', 'CornerDhState', 'CornerDhTraverser', 'DhCfrSolver', 'DhState', 'DhTraverser', 'EvExpl', 'PtttCfrSolver', 'PtttState', 'PtttTraverser', 
             'AbruptDh4CfrSolver', 'AbruptDh4State', 'AbruptDh4Traverser',
