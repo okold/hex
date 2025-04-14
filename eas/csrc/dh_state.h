@@ -95,12 +95,36 @@ struct DhState : public BaseState<abrupt, 3> {
 
   uint8_t winner_recursive(uint8_t pos, uint8_t board_size, uint8_t mode, uint8_t visited[], const uint8_t end_state[]) const {
     const auto &x = this->x;
-    int32_t positions[6] =  {pos - board_size,     // top
-                            pos - board_size + 1, // top-right
-                            pos - 1,              // left
-                            pos + 1,              // right
-                            pos + board_size - 1, // bottom-left
-                            pos + board_size};    // bottom
+    static const int8_t ADJACENCY_MATRIX_3[9][6] = {
+      {1, 3, -1, -1, -1, -1},
+      {0, 2, 3, 4, -1, -1},
+      {1, 4, 5, -1, -1, -1},
+      {0, 1, 4, 6, -1, -1},
+      {1, 2, 3, 5, 6, 7},
+      {2, 4, 7, 8, -1, -1},
+      {3, 4, 7, -1, -1, -1},
+      {4, 5, 6, 8, -1, -1},
+      {5, 7, -1, -1, -1, -1}
+    };
+
+    static const int8_t ADJACENCY_MATRIX_4[16][6] = {
+      {1, 4, -1, -1, -1, -1},
+      {0, 2, 4, 5, -1, -1},
+      {1, 3, 5, 6, -1, -1},
+      {2, 6, 7, -1, -1, -1},
+      {0, 1, 5, 8, -1, -1},
+      {1, 2, 4, 6, 8, 9},
+      {2, 3, 5, 7, 9, 10},
+      {3, 6, 10, 11, -1, -1},
+      {4, 5, 9, 12, -1, -1},
+      {5, 6, 8, 10, 12, 13},
+      {6, 7, 9, 11, 13, 14},
+      {7, 10, 14, 15, -1, -1},
+      {8, 9, 13, -1, -1, -1},
+      {9, 10, 12, 14, -1, -1},
+      {10, 11, 13, 15, -1, -1},
+      {11, 14, -1, -1, -1, -1}
+    };
 
     visited[pos] = 1;
 
@@ -109,17 +133,20 @@ struct DhState : public BaseState<abrupt, 3> {
     }
 
     for (int i = 0; i < 6; i++) {
-      if (positions[i] >= 0 &&                // position isn't out of bounds
-          positions[i] < sizeof(x[mode]) &&   // position isn't out of bounds
-          !visited[positions[i]] &&           // position hasn't been visited
-          x[mode][positions[i]]) {            // position has a token
-        return winner_recursive(positions[i], board_size, mode, visited, end_state);
+      if (ADJACENCY_MATRIX_3[pos][i] == -1) {
+        break;
+      }
+      else if (!visited[ADJACENCY_MATRIX_3[pos][i]] &&      // position not visited yet
+                x[mode][ADJACENCY_MATRIX_3[pos][i]] & 1) {  // position has a token
+        if (winner_recursive(ADJACENCY_MATRIX_3[pos][i], board_size, mode, visited, end_state)) {
+          return 1;
+        }
       }
     }
 
     return 0; // no end reached
   }
-
+  
   uint8_t winner() const {
     const auto &x = this->x;
     uint8_t board_size = 3;     // EDIT THIS
@@ -144,7 +171,7 @@ struct DhState : public BaseState<abrupt, 3> {
     }
 
     for (int i = 0; i < board_size; i++) {
-      if (x[0][i]) {
+      if (x[0][i] & 1) {
         uint8_t visited[n] = {};
         if (winner_recursive(i, board_size, 0, visited, end_states_b)) {
           return 0;
@@ -153,7 +180,7 @@ struct DhState : public BaseState<abrupt, 3> {
     }
 
     for (int i = 0; i < board_size; i++) {
-      if (x[1][i * board_size]) {
+      if (x[1][i * board_size] & 1) {
         uint8_t visited[n] = {};
         if (winner_recursive(i * board_size, board_size, 1, visited, end_states_r)) {
           return 1;
@@ -162,7 +189,7 @@ struct DhState : public BaseState<abrupt, 3> {
     }
 
     return 0xff;  // No winner
-  }
+  } 
 
   bool is_terminal() const { return winner() != 0xff; }
 
