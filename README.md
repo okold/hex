@@ -65,6 +65,7 @@ python main.py algorithm=ppo game=classical_phantom_ttt max_steps=10000000 algor
 Train an NFSP agent on Abrupt Dark Hex 3 for 10M steps and compute exact exploitability every 1M steps.
 
 ```bash
+python main.py algorithm=mccfr game=classical_dark_hex max_steps=10000000 compute_exploitability=True compute_exploitability_every=1000000
 python main.py algorithm=mccfr game=classical_dark_hex max_steps=1 compute_exploitability=True compute_exploitability_every=1
 
 The following algorithms are implemented: `ppo`, `nfsp`, `ppg`, `mmd`, `rnad`, `escher`, `psro`.

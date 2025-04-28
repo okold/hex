@@ -19,7 +19,6 @@ import time
 import pickle
 import numpy as np
 import torch
-import wandb
 
 from open_spiel.python import policy
 from open_spiel.python import rl_environment
@@ -258,17 +257,8 @@ class RunMCCFR:
                 iteration_time = cur_time - old_time
                 steps_per_sec = algorithm_config.eval_every / iteration_time
                 
-                # Log statistics
-                wandb_logs = {
-                    "steps": self.step_count,
-                    "iterations": iteration,
-                    "iterations_per_sec": steps_per_sec,
-                }
-                
                 print(f"Iteration {iteration}, Steps: {self.step_count}, "
                       f"Iterations/sec: {steps_per_sec:.2f}")
-                if hasattr(wandb, 'log'):
-                    wandb.log(wandb_logs)
                 
                 old_time = cur_time
             
