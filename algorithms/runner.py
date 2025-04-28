@@ -34,5 +34,10 @@ def get_runner_cls(algorithm):
         from algorithms.ppg.run_ppg import RunPPG
 
         return RunPPG
+    
+    if algorithm == "mccfr":
+        from algorithms.mccfr.run_mccfr import RunMCCFR
+
+        return RunMCCFR
 
     raise ValueError(f'Unrecognized algorithm: {algorithm}')

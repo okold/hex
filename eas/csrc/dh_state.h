@@ -2,7 +2,6 @@
 
 #include <bitset>
 #include <cstdint>
-#include <boost/multiprecision/cpp_int.hpp>
 
 #include "base_state.h"
 #include "utils.h"
@@ -61,9 +60,9 @@ inline std::string dh_xvec_str(const uint8_t *x, const char c) {
   return repr;
 }
 
-template <bool abrupt, uint32_t board_s = 3>
-struct DhState : public BaseState<abrupt, board_s> {
-  static constexpr uint32_t num_cells = BaseState<abrupt, board_s>::move_count;
+template <bool abrupt>
+struct DhState : public BaseState<abrupt> {
+  static constexpr uint32_t num_cells = 9;
   // new openspiel uses these :upsidedown:
   static constexpr uint32_t bits_per_action = num_cells;
   static constexpr uint32_t longest_sequence = num_cells;
@@ -93,110 +92,34 @@ struct DhState : public BaseState<abrupt, board_s> {
   static constexpr uint32_t OPENSPIEL_INFOSTATE_SIZE =
       num_cells * cell_states + longest_sequence * bits_per_action;
 
-  uint8_t winner_recursive(uint8_t pos, uint8_t board_size, uint8_t mode, uint8_t visited[], const uint8_t end_state[]) const {
-    const auto &x = this->x;
-    static const int8_t ADJACENCY_MATRIX_3[9][6] = {
-      {1, 3, -1, -1, -1, -1},
-      {0, 2, 3, 4, -1, -1},
-      {1, 4, 5, -1, -1, -1},
-      {0, 1, 4, 6, -1, -1},
-      {1, 2, 3, 5, 6, 7},
-      {2, 4, 7, 8, -1, -1},
-      {3, 4, 7, -1, -1, -1},
-      {4, 5, 6, 8, -1, -1},
-      {5, 7, -1, -1, -1, -1}
-    };
-
-    static const int8_t ADJACENCY_MATRIX_4[16][6] = {
-      {1, 4, -1, -1, -1, -1},
-      {0, 2, 4, 5, -1, -1},
-      {1, 3, 5, 6, -1, -1},
-      {2, 6, 7, -1, -1, -1},
-      {0, 1, 5, 8, -1, -1},
-      {1, 2, 4, 6, 8, 9},
-      {2, 3, 5, 7, 9, 10},
-      {3, 6, 10, 11, -1, -1},
-      {4, 5, 9, 12, -1, -1},
-      {5, 6, 8, 10, 12, 13},
-      {6, 7, 9, 11, 13, 14},
-      {7, 10, 14, 15, -1, -1},
-      {8, 9, 13, -1, -1, -1},
-      {9, 10, 12, 14, -1, -1},
-      {10, 11, 13, 15, -1, -1},
-      {11, 14, -1, -1, -1, -1}
-    };
-
-    visited[pos] = 1;
-
-    if (end_state[pos]) {
-      return 1;
-    }
-    const int8_t (*adj)[6];
-    if (board_size == 3) {
-      adj = ADJACENCY_MATRIX_3;
-    }
-    else if (board_size == 4) {
-      adj = ADJACENCY_MATRIX_4;
-    }
-
-    for (int i = 0; i < 6; i++) {
-      if (adj[pos][i] == -1) {
-        break;
-      }
-      else if (!visited[adj[pos][i]] &&      // position not visited yet
-                x[mode][adj[pos][i]] & 1) {  // position has a token
-        if (winner_recursive(adj[pos][i], board_size, mode, visited, end_state)) {
-          return 1;
-        }
-      }
-    }
-
-    return 0; // no end reached
-  }
-  
   uint8_t winner() const {
     const auto &x = this->x;
-    uint8_t board_size = this->b_s;     // EDIT THIS
-    uint8_t n = board_size * board_size;
-    
+    uint8_t a, b, c;
 
-    static const uint8_t END_STATES_B_3[] = {0, 0, 0, 0, 0, 0, 1, 1, 1};
-    static const uint8_t END_STATES_R_3[] = {0, 0, 1, 0, 0, 1, 0, 0, 1};
-    static const uint8_t END_STATES_B_4[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1};
-    static const uint8_t END_STATES_R_4[] = {0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1};
+    a = x[0][3] & (x[0][0] | x[0][1]);
+    b = x[0][4] & (x[0][1] | x[0][2]);
+    c = x[0][5] & x[0][2];
+    b |= (x[0][4] & (a | c));
+    a |= x[0][3] & b;
+    c |= x[0][5] & b;
+    a = x[0][6] & (a | b);
+    b = x[0][7] & (b | c);
+    c = x[0][8] & c;
+    if ((a | b | c) & 1) return 0;
 
-    const uint8_t* end_states_b;
-    const uint8_t* end_states_r;
-    
-    if (board_size == 3) {
-      end_states_b = END_STATES_B_3;
-      end_states_r = END_STATES_R_3;
-    }
-    else if (board_size == 4) {
-      end_states_b = END_STATES_B_4;
-      end_states_r = END_STATES_R_4;
-    }
-
-    for (int i = 0; i < board_size; i++) {
-      if (x[0][i] & 1) {
-        uint8_t visited[n] = {};
-        if (winner_recursive(i, board_size, 0, visited, end_states_b)) {
-          return 0;
-        }
-      }
-    }
-
-    for (int i = 0; i < board_size; i++) {
-      if (x[1][i * board_size] & 1) {
-        uint8_t visited[n] = {};
-        if (winner_recursive(i * board_size, board_size, 1, visited, end_states_r)) {
-          return 1;
-        }
-      }
-    }
+    a = x[1][1] & (x[1][0] | x[1][3]);
+    b = x[1][4] & (x[1][3] | x[1][6]);
+    c = x[1][7] & x[1][6];
+    b |= (x[1][4] & (a | c));
+    a |= x[1][1] & b;
+    c |= x[1][7] & b;
+    a = x[1][2] & (a | b);
+    b = x[1][5] & (b | c);
+    c = x[1][8] & c;
+    if ((a | b | c) & 1) return 1;
 
     return 0xff;  // No winner
-  } 
+  }
 
   bool is_terminal() const { return winner() != 0xff; }
 
@@ -218,33 +141,30 @@ struct DhState : public BaseState<abrupt, board_s> {
     return out;
   }
 
-  static void compute_openspiel_infostate(uint8_t player, boost::multiprecision::cpp_int info,
+  static void compute_openspiel_infostate(uint8_t player, uint64_t info,
                                           std::span<bool> buf) {
     std::fill(buf.begin(), buf.end(), false);
-    PerPlayer<std::bitset<num_cells>> b{};
+    PerPlayer<std::bitset<9>> b{};
     int n_actions = 0, m_actions = 0;
-    uint32_t mask = (1 << (move_size(num_cells)-1)) - 1; //0b1111 for 3x3
-
-    for (boost::multiprecision::cpp_int i = info; i; i >>= move_size(num_cells), ++n_actions) {
-      bool success = i & 1 ? true : false;
-      
-      uint8_t cell = (((i >> 1) & mask) - 1).convert_to<uint8_t>();
+    for (uint64_t i = info; i; i >>= 5, ++n_actions) {
+      bool success = i & 1;
+      uint8_t cell = ((i >> 1) & 0b1111) - 1;
       uint8_t p = success ? player : 1 - player;
       b[p][cell] = true;
     }
 
-    for (boost::multiprecision::cpp_int i = info; i; i >>= move_size(num_cells), ++m_actions){
-      uint8_t cell = (((i >> 1) & mask) - 1).convert_to<uint8_t>();
+    for (uint64_t i = info; i; i >>= 5, ++m_actions){
+      uint8_t cell = ((i >> 1) & 0b1111) - 1;
       buf[num_cells * cell_states + (n_actions - 1 - m_actions) * bits_per_action + cell] = true;
     }
 
-    for (auto i = 0; i < num_cells; ++i) {
+    for (auto i = 0; i < 9; ++i) {
       buf[i * cell_states + kEmpty - min_cell_state] = !(b[0][i] || b[1][i]);
     }
 
     {
       // west is 0 3 6
-      std::bitset<num_cells> west, east;
+      std::bitset<9> west, east;
       // west[0] = b[1][0];
       // west[3] = b[1][3];
       // west[6] = b[1][6];
@@ -267,7 +187,7 @@ struct DhState : public BaseState<abrupt, board_s> {
 
       auto white = b[1] & ~(east | west);
 
-      for (auto i = 0; i < num_cells; ++i) {
+      for (auto i = 0; i < 9; ++i) {
         buf[i * cell_states + kWhite - min_cell_state] = white[i];
         buf[i * cell_states + kWhiteEast - min_cell_state] = east[i];
         buf[i * cell_states + kWhiteWest - min_cell_state] = west[i];
@@ -275,7 +195,7 @@ struct DhState : public BaseState<abrupt, board_s> {
     }
 
     {
-      std::bitset<num_cells> north, south;
+      std::bitset<9> north, south;
       // north[0] = b[0][0];
       // north[1] = b[0][1];
       // north[2] = b[0][2];
@@ -298,7 +218,7 @@ struct DhState : public BaseState<abrupt, board_s> {
 
       auto black = b[0] & ~(north | south);
 
-      for (auto i = 0; i < num_cells; ++i) {
+      for (auto i = 0; i < 9; ++i) {
         buf[i * cell_states + kBlack - min_cell_state] = black[i];
         buf[i * cell_states + kBlackNorth - min_cell_state] = north[i];
         buf[i * cell_states + kBlackSouth - min_cell_state] = south[i];
@@ -306,9 +226,9 @@ struct DhState : public BaseState<abrupt, board_s> {
     }
 
     // #ifdef DEBUG
-    for (int i = 0; i < num_cells; ++i) {
+    for (int i = 0; i < 9; ++i) {
       int s = 0;
-      for (int j = 0; j < num_cells; ++j) {
+      for (int j = 0; j < 9; ++j) {
         s += buf[i * cell_states + j];
       }
       assert(s == 1);

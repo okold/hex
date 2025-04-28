@@ -3,7 +3,6 @@
 #include "averager.h"
 #include "traverser.h"
 #include "utils.h"
-#include <boost/multiprecision/cpp_int.hpp>
 
 struct CfrConf {
   AveragingStrategy avg = AveragingStrategy::QUADRATIC;

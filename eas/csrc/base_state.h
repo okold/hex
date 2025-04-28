@@ -8,21 +8,10 @@
 #include <stdexcept>
 #include <string>
 
-#include <vector>
-
-#include <boost/multiprecision/cpp_int.hpp>
-
 const uint8_t TIE = 0xee;
 
-inline uint32_t move_size(int move_count) {
-  return 32 - __builtin_clz(move_count) + 1;
-  // one bit for the player, others left board location
-}
-
-template <bool abrupt, uint32_t board_s = 3> struct BaseState {
-  
-
-  uint8_t x[2][board_s*board_s]; // state: 2 players, 9 possible moves each
+template <bool abrupt> struct BaseState {
+  uint8_t x[2][9]; // state: 2 players, 9 possible moves each
   // x[p][i] is
   //   0 if player p never played cell i
   //   otherwise x[p][i] >> 1 indicates the turn on which player p played on
@@ -31,11 +20,8 @@ template <bool abrupt, uint32_t board_s = 3> struct BaseState {
   uint8_t p;    // player (0 or 1)
   uint8_t t[2]; // turn
 
-  static constexpr uint32_t b_s = board_s;
-  static constexpr uint32_t move_count = b_s*b_s;
-
   BaseState()
-      : x{}, p{0},
+      : x{{0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}}, p{0},
         t{0, 0} {}
 
   uint8_t player() const { return p; }
@@ -60,7 +46,7 @@ template <bool abrupt, uint32_t board_s = 3> struct BaseState {
 
   uint32_t available_actions() const {
     uint32_t actions = 0;
-    for (uint32_t i = 0; i < move_count; ++i) {
+    for (int i = 0; i < 9; ++i) {
       if (!x[p][i]) {
         actions |= (1 << i);
       }
@@ -77,20 +63,19 @@ template <bool abrupt, uint32_t board_s = 3> struct BaseState {
   // 0b1111) - 1` contains the cell between 0 and 8) the latest move is encoded
   // in the rightmost 5 bits in total the 5*t_ rightmost bits are used, the
   // others are left to 0
-  boost::multiprecision::cpp_int get_infoset() const {
-    boost::multiprecision::cpp_int info = 0;
+  uint64_t get_infoset() const {
+    uint64_t info = 0;
     uint8_t t_ = t[p];
-    // int state_req = move_size(move_count);
-    for (uint32_t i = 0; i < move_count; ++i) {
+    for (int i = 0; i < 9; ++i) {
       const uint8_t to = x[p][i];
       const uint8_t td = t_ - (x[p][i] >> 1);
-      assert(td <= move_count);
-      info |= boost::multiprecision::cpp_int(((i + 1) << 1) + (to & 1)) << (move_size(move_count) * td);
+      assert(td <= 9);
+      info |= uint64_t(((i + 1) << 1) + (to & 1)) << (5 * td);
     }
     // if a cell hasn't been played, td = t_ and this is stored in the infoset
     // -> there have only been t_ moves played, so set all bits past the
     // (5*t_)'s bit to 0
-    info &= (boost::multiprecision::cpp_int(1) << (move_size(move_count) * t_)) - 1;
+    info &= (uint64_t(1) << (5 * t_)) - 1;
     return info;
   }
 
@@ -116,45 +101,41 @@ template <bool abrupt, uint32_t board_s = 3> struct BaseState {
 };
 
 // get total number of moves played so far
-inline uint8_t num_actions(boost::multiprecision::cpp_int infoset, uint64_t move_count=9) {
+inline uint8_t num_actions(uint64_t infoset) {
   uint8_t actions = 0;
-  for (; infoset; ++actions, infoset >>= move_size(move_count))
+  for (; infoset; ++actions, infoset >>= 5)
     ;
   return actions;
 }
 
 // get the infoset one action before (last action = rightmost bits)
-inline boost::multiprecision::cpp_int parent_infoset(boost::multiprecision::cpp_int infoset, uint64_t move_count=9) {
+inline uint64_t parent_infoset(const uint64_t infoset) {
   assert(infoset);
-  return infoset >> move_size(move_count);
+  return infoset >> 5;
 }
 
 // get the last move (between 0 and 8) that was played
-inline uint32_t parent_action(boost::multiprecision::cpp_int infoset, uint64_t move_count=9) {
+inline uint8_t parent_action(const uint64_t infoset) {
   assert(infoset);
-  uint32_t mask = (1 << (move_size(move_count)-1))-1;
-  uint32_t pos = (((infoset >> 1) & mask) - 1).convert_to<uint32_t>();
-  return pos;
+  return ((infoset >> 1) & 0b1111) - 1;
 }
 
-inline std::vector<uint8_t> infoset_xvec(boost::multiprecision::cpp_int infoset, uint64_t move_count=9) {
-  const uint8_t na = num_actions(infoset, move_count);
-  std::vector<uint8_t> x(move_count);
-  for (int i = na; infoset; --i, infoset >>= move_size(move_count)) {
-    uint32_t mask = (1 << move_size(move_count))-1;
-    const uint8_t co = (infoset & mask).convert_to<uint8_t>();
-    assert(co < 2*move_count && i >= 1);
+inline std::array<uint8_t, 9> infoset_xvec(uint64_t infoset) {
+  const uint8_t na = num_actions(infoset);
+  std::array<uint8_t, 9> x = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+  for (int i = na; infoset; --i, infoset >>= 5) {
+    const uint8_t co = infoset & 0b11111;
+    assert(co < 18 && i >= 1);
     x[(co >> 1) - 1] = (i << 1) + (co & 1);
   }
   return x;
 }
 
-inline std::string infoset_desc(boost::multiprecision::cpp_int key, uint64_t move_count=9) {
+inline std::string infoset_desc(uint64_t key) {
   std::string out = "";
-  uint32_t mask = (1 << move_size(move_count))-2;
-  for (; key; key >>= move_size(move_count)) {
+  for (; key; key >>= 5) {
     out += (key & 1) ? '*' : '.';
-    out += std::to_string((((key & mask) >> 1) - 1).convert_to<uint32_t>());
+    out += std::to_string(((key & 0b11110) >> 1) - 1);
   }
   std::reverse(out.begin(), out.end());
   return out;

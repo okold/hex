@@ -10,7 +10,6 @@ import time
 import torch
 import traceback
 import uuid
-import psutil
 
 from algorithms.eas_exploitability import compute_exploitability, build_traverser
 from algorithms.runner import get_runner_cls
@@ -46,20 +45,16 @@ def compute_exploitability_wrapper(
     step,
     action_selection=["sto", "sto"],
 ):
-
-    print(f"[DEBUG] Memory used before exploitability: {psutil.virtual_memory().used / (1024**3):.2f} GB")
     print("Computing exploitability... (this can take a few minutes)")
     t0_exploitability = time.time()
     ev0, expl0, expl1 = compute_exploitability(
         model_p0,
         model_p1,
         traverser=traverser,
-        batch_size=100,
+        batch_size=400_000,
         action_selection=action_selection,
         game_name=game_name,
     )
-    print(f"[DEBUG] Reached end of exploitability calc.")
-
     log_data = {
         "global_step": step,
         "avg_score_response": (expl0 + expl1) / 2,

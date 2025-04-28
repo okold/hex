@@ -15,14 +15,14 @@ def to_bool(x):
 
 # games to test (compare openspiel implementation with eas implementation)
 GAMES = {
-    # 'Classical Phantom Tic-Tac-Toe': (
-    #     pyspiel.load_game('phantom_ttt'),
-    #     eas.PtttState
-    # ),
-    # 'Abrupt Phantom Tic-Tac-Toe': (
-    #     None, # openspiel doesn't have an abrupt pttt implementation afaik
-    #     eas.AbruptPtttState
-    # ),
+    'Classical Phantom Tic-Tac-Toe': (
+        pyspiel.load_game('phantom_ttt'),
+        eas.PtttState
+    ),
+    'Abrupt Phantom Tic-Tac-Toe': (
+        None, # openspiel doesn't have an abrupt pttt implementation afaik
+        eas.AbruptPtttState
+    ),
     'Classical 3x3 Dark Hex': (
         pyspiel.load_game('dark_hex(board_size=3,gameversion=cdh)'),
         eas.DhState
@@ -31,18 +31,10 @@ GAMES = {
         pyspiel.load_game('dark_hex(board_size=3,gameversion=adh)'),
         eas.AbruptDhState
     ),
-    'Classical 4x4 Dark Hex': (
-        pyspiel.load_game('dark_hex(board_size=4,gameversion=cdh)'),
-        eas.Dh4State
-    ),
-    'Abrupt 4x4 Dark Hex': (
-        pyspiel.load_game('dark_hex(board_size=4,gameversion=adh)'),
-        eas.AbruptDh4State
-    ),
 }
 
 # number of random runs for each game
-N = 10_000 #_000_000
+N = 10_000_000
     
 actions_history = np.zeros(100, dtype=np.int32) - 1  # save actions for debugging
 for game_str, (os_game, eas_state_fn) in GAMES.items():
@@ -53,10 +45,10 @@ for game_str, (os_game, eas_state_fn) in GAMES.items():
     for i in range(1, N+1):
         try:
             actions_history[:] = -1
-            if i % 10_000 == 0:
+            if i % 100_000 == 0:
                 t_elapsed = time.time() - t0
                 t_remaining = (N - i) * t_elapsed / i
-                print(f'{i}/{N} ; {t_elapsed:.1f}sec elapsed ; {t_remaining/60:.1f}min remaining')
+                print(f'{i}/{N} ; {t_elapsed/60:.1f}min elapsed ; {t_remaining/60:.1f}min remaining')
             # new initial state
             os_state = os_game.new_initial_state()
             eas_state = eas_state_fn()
@@ -96,9 +88,3 @@ for game_str, (os_game, eas_state_fn) in GAMES.items():
             assert os_winner == eas_winner, 'winner'
         except AssertionError as e:
             print(f'Error on game {game_str} with actions {actions_history}: {e}')
-            if f'{e}' == "legal_actions":
-                print(f'{oh_legal_actions=}')
-                print(f'{eas_legal_actions=}')
-            if f'{e}' == "terminal":
-                print(os_terminal, eas_terminal)
-                print(f"winner: {eas_state.winner()}")

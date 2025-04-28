@@ -3,11 +3,6 @@
 #include <pybind11/pytypes.h>
 #include <pybind11/stl.h>
 
-// ChatGPT-provided casting code using strings as an intermediary
-#include "pybind_boost_cpp_int.hpp"
-
-
-
 #include <array>
 #include <cstdint>
 #include <iomanip>
@@ -34,9 +29,9 @@ template <typename T = RealBuf> T to_mut_span(NdArray &arr) {
   return T(arr.mutable_data(), arr.size());
 }
 
-std::array<py::ssize_t, 2> mat_shape(ConstRealBuf buf, const uint32_t move_count) {
-  CHECK(buf.size() % move_count == 0, "Buffer size must be a multiple of the move count");
-  return {(py::ssize_t)buf.size() / move_count, move_count};
+std::array<py::ssize_t, 2> mat_shape(ConstRealBuf buf) {
+  CHECK(buf.size() % 9 == 0, "Buffer size must be a multiple of 9");
+  return {(py::ssize_t)buf.size() / 9, 9};
 }
 
 namespace {
@@ -49,7 +44,7 @@ auto to_ndarray(std::array<py::ssize_t, N> shape, ConstRealBuf buf) {
         buf.size(), prod(shape));
   return NdArray(shape, buf.data());
 }
-auto to_ndarray(ConstRealBuf buf, uint32_t move_count) { return to_ndarray(mat_shape(buf, move_count), buf); }
+auto to_ndarray(ConstRealBuf buf) { return to_ndarray(mat_shape(buf), buf); }
 } // namespace
 
 struct EvExplPy {
@@ -57,14 +52,13 @@ struct EvExplPy {
   std::tuple<NdArray, NdArray> gradient;
   std::tuple<Real, Real> expl;
   std::tuple<NdArray, NdArray> best_response;
-  const uint32_t move_count=9;
 
   // NB: allows implicit conversion
-  EvExplPy(EvExpl ev) : ev0(ev.ev0), expl{ev.expl[0], ev.expl[1]}, move_count(ev.move_count) {
-    std::get<0>(gradient) = to_ndarray(ev.gradient[0], move_count);
-    std::get<0>(best_response) = to_ndarray(ev.best_response[0], move_count);
-    std::get<1>(gradient) = to_ndarray(ev.gradient[1], move_count);
-    std::get<1>(best_response) = to_ndarray(ev.best_response[1], move_count);
+  EvExplPy(EvExpl ev) : ev0(ev.ev0), expl{ev.expl[0], ev.expl[1]} {
+    std::get<0>(gradient) = to_ndarray(ev.gradient[0]);
+    std::get<0>(best_response) = to_ndarray(ev.best_response[0]);
+    std::get<1>(gradient) = to_ndarray(ev.gradient[1]);
+    std::get<1>(best_response) = to_ndarray(ev.best_response[1]);
   }
 };
 
@@ -84,8 +78,8 @@ void register_types(py::module &m, const std::string &prefix) {
       .def(
           "next",
           [](T &s, const uint8_t cell) -> void {
-            CHECK(cell < T::move_count, "Invalid cell (must be in range [0..%d]; found %d)",
-                  T::move_count, cell);
+            CHECK(cell < 9, "Invalid cell (must be in range [0..8]; found %d)",
+                  cell);
             CHECK(!s.is_terminal(), "Game is over");
             const uint32_t a = s.available_actions();
             CHECK(a & (1 << cell), "The action is not legal");
@@ -107,12 +101,11 @@ void register_types(py::module &m, const std::string &prefix) {
              }
            })
       .def("action_mask",
-           [](const T &s) -> std::vector<bool> {
-             std::vector<bool> mask;
-             uint32_t moves = s.b_s * s.b_s;
-             for (uint32_t i = 0, a = s.available_actions(); i < moves;
+           [](const T &s) -> std::array<bool, 9> {
+             std::array<bool, 9> mask;
+             for (uint32_t i = 0, a = s.available_actions(); i < 9;
                   ++i, a >>= 1) {
-               mask.push_back(a & 1);
+               mask[i] = a & 1;
              }
              return mask;
            })
@@ -144,16 +137,16 @@ void register_types(py::module &m, const std::string &prefix) {
             // clang-format off
             CHECK(strat0.ndim() == 2 &&
                       strat0.shape(0) == traverser.treeplex[0]->num_infosets() &&
-                      strat0.shape(1) == T::move_count,
-                  "Invalid shape for Player 1's strategy. Must be (%d, %d); found (%lu, %lu)",
-                  traverser.treeplex[0]->num_infosets(), T::move_count, 
-                  strat0.shape(0), strat0.shape(1));
+                      strat0.shape(1) == 9,
+                  "Invalid shape for Player 1's strategy. Must be (%d, 9); found (%lu, %lu)", 
+                  traverser.treeplex[0]->num_infosets(), strat0.shape(0),
+                  strat0.shape(1));
             CHECK(strat1.ndim() == 2 &&
                       strat1.shape(0) == traverser.treeplex[1]->num_infosets() &&
-                      strat1.shape(1) == T::move_count,
-                  "Invalid shape for Player 2's strategy. Must be (%d, %d); (%lu, %lu)",
-                  traverser.treeplex[1]->num_infosets(), T::move_count, 
-                  strat1.shape(0), strat1.shape(1));
+                      strat1.shape(1) == 9,
+                  "Invalid shape for Player 2's strategy. Must be (%d, 9); (%lu, %lu)",
+                  traverser.treeplex[1]->num_infosets(), strat1.shape(0),
+                  strat1.shape(1));
             // clang-format on
 
             return traverser.ev_and_exploitability(
@@ -169,7 +162,7 @@ void register_types(py::module &m, const std::string &prefix) {
             CHECK(row < traverser.treeplex[p]->num_infosets(),
                   "Invalid row (expected < %d; found %d)",
                   traverser.treeplex[p]->num_infosets(), row);
-            boost::multiprecision::cpp_int key = traverser.treeplex[p]->infoset_keys.at(row);
+            uint64_t key = traverser.treeplex[p]->infoset_keys.at(row);
             return infoset_desc(key);
           },
           py::arg("player"), py::arg("row"))
@@ -177,18 +170,18 @@ void register_types(py::module &m, const std::string &prefix) {
           "row_for_infoset",
           [](const Traverser<T> &traverser, const uint8_t p,
              const std::string infoset_desc) -> uint32_t {
-            boost::multiprecision::cpp_int infoset_key = 0;
+            uint64_t infoset_key = 0;
             CHECK(infoset_desc.size() % 2 == 0,
                   "Infoset desc does not have even length");
             for (size_t i = 0; i < infoset_desc.size() / 2; ++i) {
               const char cell = infoset_desc[2 * i];
               const char outcome = infoset_desc[2 * i + 1];
-              CHECK(cell >= '0' && cell <= '9',   // I am ignoring this for now because there will be 16 which is 2 digits
+              CHECK(cell >= '0' && cell <= '9',
                     "Invalid cell in infoset desc `%s`", infoset_desc.c_str());
               CHECK(outcome == '*' || outcome == '.',
                     "Invalid outcome in infoset desc `%s`",
                     infoset_desc.c_str());
-              infoset_key <<= 5; // same with this thing here
+              infoset_key <<= 5;
               infoset_key += 2 * ((cell - '0') + 1);
               infoset_key += (outcome == '*');
             }
@@ -205,9 +198,9 @@ void register_types(py::module &m, const std::string &prefix) {
 
              for (int p = 0; p < 2; ++p) {
                const uint32_t rows = traverser.treeplex[p]->num_infosets();
-               std::valarray<Real> strategy(0.0, rows * T::move_count);
-               traverser.treeplex[p]->set_uniform(strategy, T::move_count);
-               out[p] = to_ndarray(strategy, T::move_count);
+               std::valarray<Real> strategy(0.0, rows * 9);
+               traverser.treeplex[p]->set_uniform(strategy);
+               out[p] = to_ndarray(strategy);
              }
 
              return std::make_tuple(out[0], out[1]);
@@ -240,7 +233,7 @@ void register_types(py::module &m, const std::string &prefix) {
            [](const Traverser<T> &traverser, const uint8_t p,
               const NdArray &strategy) {
              return traverser.treeplex[p]->is_valid_strategy(
-                 to_const_span(strategy), T::move_count);
+                 to_const_span(strategy));
            })
       .def_property_readonly("NUM_INFOS_PL0",
                              [](const Traverser<T> &traverser) {
@@ -283,8 +276,8 @@ void register_types(py::module &m, const std::string &prefix) {
       .def("step", &CfrSolver<T>::step)
       .def("avg_bh",
            [](const CfrSolver<T> &solver) -> std::tuple<NdArray, NdArray> {
-             return std::make_tuple(to_ndarray(solver.get_avg_bh(0), T::move_count),
-                                    to_ndarray(solver.get_avg_bh(1), T::move_count));
+             return std::make_tuple(to_ndarray(solver.get_avg_bh(0)),
+                                    to_ndarray(solver.get_avg_bh(1)));
            });
 
   m.def(
@@ -319,7 +312,7 @@ PYBIND11_MODULE(pyeas, m) {
           },
           py::arg("strategy"), py::arg("weight") = std::nullopt)
       .def("running_avg",
-           [](const Averager &a) { return to_ndarray(a.running_avg(), a.move_count); })
+           [](const Averager &a) { return to_ndarray(a.running_avg()); })
       .def("clear", &Averager::clear);
 
   py::enum_<AveragingStrategy>(m, "AveragingStrategy")
@@ -398,8 +391,4 @@ PYBIND11_MODULE(pyeas, m) {
   register_types<CornerDhState>(m, "CornerDh");
   register_types<PtttState<false>>(m, "Pttt");
   register_types<PtttState<true>>(m, "AbruptPttt");
-
-  // added
-  register_types<DhState<false, 4>>(m, "Dh4");
-  register_types<DhState<true, 4>>(m, "AbruptDh4");
 }

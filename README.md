@@ -65,8 +65,7 @@ python main.py algorithm=ppo game=classical_phantom_ttt max_steps=10000000 algor
 Train an NFSP agent on Abrupt Dark Hex 3 for 10M steps and compute exact exploitability every 1M steps.
 
 ```bash
-python main.py algorithm=nfsp game=abrupt_dark_hex max_steps=10000000 compute_exploitability=True compute_exploitability_every=1000000
-```
+python main.py algorithm=mccfr game=classical_dark_hex max_steps=1 compute_exploitability=True compute_exploitability_every=1
 
 The following algorithms are implemented: `ppo`, `nfsp`, `ppg`, `mmd`, `rnad`, `escher`, `psro`.
 
@@ -103,4 +102,3 @@ The following games are also available to play against our RL agents in this [on
 **Dark:** The opponent's moves are hidden. Selecting an occupied cell reveals it, and the player's turn continues.
 
 **Abrupt DH3:** In the abrupt variant, if a player's move reveals an opponent's symbol, their turn ends.
-# hex
